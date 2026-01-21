@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Map, Swords, Target, User, GraduationCap } from 'lucide-react';
+import { Map, Swords, Users, TrendingUp, User, LayoutGrid } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
@@ -9,18 +9,18 @@ interface NavigationProps {
 
 const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
   const tabs = [
-    { id: 'spots', label: 'Spots', icon: Map },
-    { id: 'challenges', label: 'Battles', icon: Swords },
-    { id: 'mentorship', label: 'Coach', icon: GraduationCap },
-    { id: 'skills', label: 'Skills', icon: Target },
+    { id: 'spots', label: 'Map', icon: Map },
+    { id: 'challenges', label: 'Challenges', icon: Swords },
+    { id: 'mentorship', label: 'Mentors', icon: Users },
+    { id: 'skills', label: 'Journey', icon: TrendingUp },
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 md:relative md:w-24 lg:w-28 md:h-full z-[100] bg-slate-900/95 backdrop-blur-xl border-t md:border-t-0 md:border-r border-slate-800 flex md:flex-col justify-center md:justify-start pt-2 md:pt-12 transition-all duration-300 pb-[env(safe-area-inset-bottom)] md:pb-0"
+      className="fixed bottom-0 left-0 right-0 md:relative md:w-24 lg:w-28 md:h-full z-[100] bg-black/80 backdrop-blur-xl border-t md:border-t-0 md:border-r border-slate-800 flex md:flex-col justify-center md:justify-start pt-2 md:pt-12 transition-all duration-300 pb-[env(safe-area-inset-bottom)] md:pb-0"
     >
-      <div className="flex md:flex-col justify-evenly md:justify-start items-center w-full max-w-lg md:max-w-none px-2 md:px-0 md:gap-8 lg:gap-10 h-full md:h-auto">
+      <div className="flex md:flex-col justify-between md:justify-start items-center w-full max-w-lg md:max-w-none px-4 md:px-0 md:gap-8 lg:gap-10 h-[60px] md:h-auto">
         
         {/* Logo Mark for Desktop Sidebar */}
         <div className="hidden md:flex flex-col items-center mb-4 lg:mb-8">
@@ -36,14 +36,21 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex flex-col items-center justify-center gap-1 md:gap-2 py-1 md:py-3 w-16 md:w-full transition-all group relative active:scale-95 touch-manipulation ${
+              className={`flex flex-col items-center justify-center gap-1 md:gap-2 w-full md:w-full transition-all group relative active:scale-95 touch-manipulation ${
                 isActive ? 'text-indigo-400' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
-              <div className={`p-1.5 md:p-2.5 rounded-xl transition-all duration-300 ${isActive ? 'bg-indigo-500/10 md:bg-transparent' : ''}`}>
-                 <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+              <div className={`p-1 md:p-2.5 rounded-2xl transition-all duration-300 relative ${isActive ? 'bg-indigo-500/10 md:bg-transparent' : ''}`}>
+                 <Icon 
+                    size={24} 
+                    strokeWidth={isActive ? 2.5 : 2} 
+                    className={`transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'group-hover:scale-110'}`} 
+                 />
+                 {isActive && (
+                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-indigo-500 rounded-full md:hidden" />
+                 )}
               </div>
-              <span className={`text-[9px] lg:text-[10px] font-black tracking-widest uppercase transition-opacity ${isActive ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}>
+              <span className={`text-[9px] lg:text-[10px] font-black tracking-widest uppercase transition-all ${isActive ? 'opacity-100 text-white' : 'opacity-0 md:opacity-70 group-hover:opacity-100 hidden md:block'}`}>
                 {tab.label}
               </span>
               
