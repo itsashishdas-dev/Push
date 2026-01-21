@@ -2,7 +2,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { Discipline, Difficulty, Skill } from '../types';
 import { SKILL_LIBRARY, RETRO_AVATARS } from '../constants';
-import { MapPin, Check, ChevronRight, Loader2, Target, Zap, Mountain, Camera, User as UserIcon, Upload } from 'lucide-react';
+import { MapPin, Check, ChevronRight, Loader2, Target, Zap, Mountain, Camera, User as UserIcon, Upload, ShieldCheck, Globe } from 'lucide-react';
 
 interface OnboardingViewProps {
   onComplete: (data: any) => void;
@@ -16,6 +16,7 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [selectedTricks, setSelectedTricks] = useState<string[]>([]);
   const [isLocating, setIsLocating] = useState(false);
+  const [showManualInput, setShowManualInput] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +44,11 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
     } else {
       setIsLocating(false);
     }
+  };
+
+  const handleSkipLocation = () => {
+    setLocation('India'); // Default fallback
+    setStep(3);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,40 +156,68 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
           )}
 
           {step === 2 && (
-            <div className="space-y-10 animate-view">
-              <div className="space-y-3">
-                <h2 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-tight">Locate Your<br/>Session.</h2>
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest italic opacity-80">Find spots and local crews near you.</p>
+            <div className="space-y-8 animate-view flex flex-col items-center text-center pt-4">
+              <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center relative mb-2">
+                <div className="absolute inset-0 bg-indigo-500/10 rounded-full animate-ping opacity-75" />
+                <div className="absolute inset-0 border border-indigo-500/20 rounded-full" />
+                <MapPin size={48} className="text-indigo-500 relative z-10 drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+              </div>
+
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-tight">Enable Spot<br/>Radar</h2>
+                <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-[280px] mx-auto">
+                  PUSH needs your location to show <span className="text-white font-bold">hidden spots</span>, <span className="text-white font-bold">active challenges</span>, and <span className="text-white font-bold">local mentors</span> near you.
+                </p>
+                <div className="inline-flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-4 py-2 rounded-xl">
+                  <ShieldCheck size={12} className="text-green-500" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Data secure & never shared</span>
+                </div>
               </div>
               
-              <div className="space-y-4">
+              <div className="w-full space-y-4 pt-4">
                  <button 
                   onClick={handleLocation}
                   disabled={isLocating}
-                  className={`w-full py-5 bg-[#C7C7CC] hover:bg-[#BABABC] text-black rounded-full flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-black uppercase tracking-widest text-xs shadow-lg ${isLocating ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  className={`w-full py-5 bg-white text-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-black uppercase tracking-widest text-xs shadow-[0_0_30px_rgba(255,255,255,0.15)] hover:shadow-[0_0_40px_rgba(255,255,255,0.25)] ${isLocating ? 'opacity-80 cursor-wait' : ''}`}
                 >
-                  {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4 mb-0.5" />}
-                  {isLocating ? 'Scanning Radar...' : 'Enable Precise Location'}
+                  {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 mb-0.5 fill-black" />}
+                  {isLocating ? 'Scanning Area...' : 'Allow Location Access'}
                 </button>
 
-                <div className="relative flex items-center gap-4 py-2">
-                   <div className="h-[1px] flex-1 bg-slate-800"></div>
-                   <span className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-700">OR</span>
-                   <div className="h-[1px] flex-1 bg-slate-800"></div>
-                </div>
-
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-                    <span className="text-indigo-400 text-[10px] font-black uppercase tracking-widest">Zone:</span>
+                {!showManualInput ? (
+                  <div className="space-y-3">
+                    <button 
+                      onClick={() => setShowManualInput(true)}
+                      className="text-slate-500 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors border-b border-transparent hover:border-slate-500 pb-0.5"
+                    >
+                      Enter City Manually
+                    </button>
+                    <div className="h-4"></div> {/* Spacer */}
+                    <button 
+                      onClick={handleSkipLocation}
+                      className="text-slate-700 text-[9px] font-bold uppercase tracking-widest hover:text-slate-500 transition-colors"
+                    >
+                      Continue without location
+                    </button>
                   </div>
-                  <input 
-                    type="text" 
-                    placeholder="Enter City Manually"
-                    className="w-full bg-slate-900 rounded-3xl py-6 pl-20 pr-6 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/20 transition-all shadow-inner"
-                    value={location}
-                    onChange={e => setLocation(e.target.value)}
-                  />
-                </div>
+                ) : (
+                  <div className="animate-view space-y-3">
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
+                        <Globe size={14} className="text-indigo-500" />
+                      </div>
+                      <input 
+                        type="text" 
+                        placeholder="Type your city..."
+                        autoFocus
+                        className="w-full bg-slate-900 rounded-2xl py-4 pl-12 pr-6 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-inner font-bold"
+                        value={location}
+                        onChange={e => setLocation(e.target.value)}
+                      />
+                    </div>
+                    {/* Navigation buttons are at bottom of main container */}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -303,15 +337,17 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
 
         {/* Navigation CTA */}
         <div className="pt-8 shrink-0">
-          <button 
-            onClick={step === 4 ? handleFinalize : () => setStep(step + 1)}
-            disabled={(step === 2 && !location && !isLocating) || (step === 3 && !username)}
-            className={`w-full h-18 bg-indigo-500 py-5 rounded-3xl font-black uppercase italic tracking-[0.2em] text-sm text-white shadow-2xl shadow-indigo-500/20 active:scale-[0.96] transition-all flex items-center justify-center gap-3 ${
-              ((step === 2 && !location && !isLocating) || (step === 3 && !username)) ? 'opacity-50 grayscale cursor-not-allowed' : ''
-            }`}
-          >
-            {step === 4 ? 'Start Pushing' : 'Continue'} <ChevronRight size={20} strokeWidth={3} />
-          </button>
+          {(step !== 2 || showManualInput) && (
+            <button 
+              onClick={step === 4 ? handleFinalize : () => setStep(step + 1)}
+              disabled={(step === 2 && !location && !isLocating) || (step === 3 && !username)}
+              className={`w-full h-18 bg-indigo-500 py-5 rounded-3xl font-black uppercase italic tracking-[0.2em] text-sm text-white shadow-2xl shadow-indigo-500/20 active:scale-[0.96] transition-all flex items-center justify-center gap-3 ${
+                ((step === 2 && !location && !isLocating) || (step === 3 && !username)) ? 'opacity-50 grayscale cursor-not-allowed' : ''
+              }`}
+            >
+              {step === 4 ? 'Start Pushing' : 'Continue'} <ChevronRight size={20} strokeWidth={3} />
+            </button>
+          )}
         </div>
       </div>
       
