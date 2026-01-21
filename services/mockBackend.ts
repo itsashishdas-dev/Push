@@ -1,5 +1,5 @@
 
-import { Spot, User, VerificationStatus, Discipline, Difficulty, Review, Collectible, CollectibleType, ChatMessage, Session, DailyNote, Challenge, Mentor, Booking, MentorBadge, ChallengeSubmission, FriendRequest, SkillState } from '../types';
+import { Spot, User, VerificationStatus, Discipline, Difficulty, Review, Collectible, CollectibleType, ChatMessage, Session, DailyNote, Challenge, Mentor, Booking, MentorBadge, ChallengeSubmission, FriendRequest, SkillState, MentorApplication } from '../types';
 import { MOCK_SPOTS, COLLECTIBLES_DATABASE, SKILL_LIBRARY } from '../constants';
 
 const STORAGE_KEYS = {
@@ -597,44 +597,99 @@ class MockBackend {
     return mentors;
   }
 
-  async applyToBecomeMentor(rate: number, bio: string): Promise<User> {
+  async applyToBecomeMentor(data: { rate: number, bio: string, experience: string, style: string, video: string }): Promise<User> {
     await this.delay(800);
     const user = await this.getUser();
     
-    if (user.level < 10) { 
-        // In a real app, strict checks here. For demo, we might allow level 10+
+    // Mock Level Check (in production this would be strict)
+    if (user.level < 5) {
+        throw new Error("You must be at least Level 5 to apply.");
     }
 
-    const json = localStorage.getItem(STORAGE_KEYS.MENTORS);
-    const mentors: Mentor[] = json ? JSON.parse(json) : [];
-    
-    // Check if already mentor
-    const existing = mentors.find(m => m.userId === user.id);
-    if (existing) {
-        existing.rate = rate;
-        existing.bio = bio;
-    } else {
-        mentors.push({
-            id: Math.random().toString(36).substr(2, 9),
-            userId: user.id,
-            name: user.name,
-            avatar: user.avatar || '',
-            disciplines: user.disciplines,
-            rate,
-            bio,
-            rating: 0,
-            reviewCount: 0,
-            earnings: 0,
-            studentsTrained: 0,
-            badges: []
-        });
+    // Check if already applied
+    if (user.mentorApplication && user.mentorApplication.status === 'pending') {
+        throw new Error("You already have a pending application.");
     }
+
+    const application: MentorApplication = {
+        status: 'pending',
+        date: new Date().toISOString(),
+        experience: data.experience,
+        videoUrl: data.video,
+        style: data.style,
+        rate: data.rate,
+        bio: data.bio
+    };
+
+    const updatedUser = { ...user, mentorApplication: application };
+    return this.updateUser(updatedUser);
+  }
+
+  async getPendingMentorApplications(): Promise<{ user: User, application: MentorApplication }[]> {
+      await this.delay(300);
+      const user = await this.getUser();
+      const apps = [];
+      
+      // Add current user if pending
+      if (user.mentorApplication && user.mentorApplication.status === 'pending') {
+          apps.push({ user, application: user.mentorApplication });
+      }
+
+      // Add a mock application if none exists for demo purposes
+      if (apps.length === 0 && !user.isMentor) {
+          apps.push({
+              user: { ...user, id: 'u-mock-applicant', name: 'Rohan D.', level: 8, location: 'Bangalore' } as User,
+              application: {
+                  status: 'pending',
+                  date: new Date().toISOString(),
+                  experience: '5 years of downhill racing. Podium finish at Nandi 2023.',
+                  videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-man-skateboarding-on-a-road-4263-large.mp4',
+                  style: 'Technical and safety-focused.',
+                  rate: 800,
+                  bio: 'Teaching speed control and pre-drifts.'
+              } as MentorApplication
+          });
+      }
+
+      return apps;
+  }
+
+  async reviewMentorApplication(userId: string, approved: boolean): Promise<void> {
+    await this.delay(600);
+    const currentUser = await this.getUser();
     
-    localStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(mentors));
+    // In a real backend, we'd look up the user by ID. 
+    // Here we check if the ID matches the current user or is our mock user.
     
-    const updatedUser = { ...user, isMentor: true };
-    await this.updateUser(updatedUser);
-    return updatedUser;
+    if (currentUser.id === userId && currentUser.mentorApplication) {
+        if (approved) {
+             const mentors = await this.getMentors();
+             const app = currentUser.mentorApplication!;
+             const newMentor: Mentor = {
+                 id: `m-${userId}`,
+                 userId: userId,
+                 name: currentUser.name,
+                 avatar: currentUser.avatar || '',
+                 disciplines: currentUser.disciplines,
+                 rate: app.rate,
+                 bio: app.bio,
+                 rating: 5.0, 
+                 reviewCount: 0,
+                 earnings: 0,
+                 studentsTrained: 0,
+                 badges: ['RISING_STAR']
+             };
+             mentors.push(newMentor);
+             localStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(mentors));
+             
+             currentUser.isMentor = true;
+             currentUser.mentorApplication!.status = 'approved';
+        } else {
+             currentUser.mentorApplication!.status = 'rejected';
+        }
+        await this.updateUser(currentUser);
+    } 
+    // If it's the mock user, we just simulate success as it doesn't persist
   }
 
   async bookMentor(mentorId: string, date: string, time: string): Promise<Booking> {

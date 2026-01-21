@@ -56,6 +56,16 @@ export interface FriendRequest {
   timestamp: string;
 }
 
+export interface MentorApplication {
+  status: 'pending' | 'approved' | 'rejected';
+  date: string;
+  experience: string;
+  videoUrl: string;
+  style: string;
+  rate: number;
+  bio: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -72,6 +82,7 @@ export interface User {
   equippedDeckId?: string;
   completedChallengeIds: string[]; // New: Track completed challenges
   isMentor: boolean; // New: Mentor Status
+  mentorApplication?: MentorApplication; // Track application status
   friends: string[]; // List of User IDs
   friendRequests: FriendRequest[];
   // User Preferences

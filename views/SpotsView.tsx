@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, SlidersHorizontal, Plus, Map as MapIcon, Layers, Info, Target, Trophy, X, Calendar, Clock, MessageSquare, UserPlus, Check, MapPin, ShieldCheck, AlertCircle, Camera, Trash2, Loader2, ExternalLink, Globe, ChevronDown, Sparkles, CloudSun, Wind, Thermometer, Star, Activity, ImagePlus, UserCheck, Send, ShieldAlert, Filter, Navigation as NavIcon, Edit2, MessageCircle, Grid, RefreshCw, CalendarDays, ChevronRight, Home, Zap, Mountain, BookOpen, Video, Award, PlayCircle, Play, MessageCircleMore, Locate } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, Map as MapIcon, Layers, Info, Target, Trophy, X, Calendar, Clock, MessageSquare, UserPlus, Check, MapPin, ShieldCheck, AlertCircle, Camera, Trash2, Loader2, ExternalLink, Globe, ChevronDown, Sparkles, CloudSun, Wind, Thermometer, Star, Activity, ImagePlus, UserCheck, Send, ShieldAlert, Filter, Navigation as NavIcon, Edit2, MessageCircle, Grid, RefreshCw, CalendarDays, ChevronRight, Home, Zap, Mountain, BookOpen, Video, Award, PlayCircle, Play, MessageCircleMore, Locate, Swords } from 'lucide-react';
 import { Discipline, Spot, Session, Difficulty, VerificationStatus, Collectible, ChatMessage, DailyNote, Challenge, ChallengeSubmission, User } from '../types';
 import SpotCard from '../components/SpotCard';
 import SessionCard from '../components/SessionCard';
@@ -1033,7 +1033,7 @@ const SpotsView: React.FC = () => {
                                 
                                 {!isCompleted && (
                                   <label className={`cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 ${isUploading ? 'opacity-50' : ''}`}>
-                                    {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Video size={12} />}
+                                    {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Swords size={12} />}
                                     {isUploading ? 'Uploading...' : 'Prove It'}
                                     <input type="file" accept="video/*" className="hidden" disabled={isUploading} onChange={(e) => handleUploadAttempt(e, challenge.id)} />
                                   </label>
@@ -1108,6 +1108,109 @@ const SpotsView: React.FC = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* CREATE CHALLENGE MODAL */}
+      {showCreateChallenge && (
+        <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-[2rem] p-6 space-y-6 shadow-2xl animate-view">
+            <div className="flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">New Challenge</h3>
+                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Challenge the community</p>
+              </div>
+              <button onClick={() => setShowCreateChallenge(false)} className="p-2 -mr-2 text-slate-500"><X size={20} /></button>
+            </div>
+
+            <form onSubmit={handleCreateChallenge} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Challenge Name</label>
+                <input 
+                  type="text" 
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-sm font-bold focus:border-amber-500 outline-none"
+                  placeholder="e.g. Kickflip the 3-block"
+                  value={newChallenge.title}
+                  onChange={e => setNewChallenge({...newChallenge, title: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-2">
+                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Difficulty</label>
+                 <div className="flex bg-slate-800 border border-slate-700 rounded-xl p-1">
+                    {[Difficulty.BEGINNER, Difficulty.INTERMEDIATE, Difficulty.ADVANCED].map(d => (
+                      <button 
+                        key={d}
+                        type="button"
+                        onClick={() => setNewChallenge({...newChallenge, difficulty: d})}
+                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${newChallenge.difficulty === d ? 'bg-amber-500 text-white shadow-md' : 'text-slate-500'}`}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Requirements / Rules</label>
+                <textarea 
+                  required
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white text-sm focus:border-amber-500 outline-none h-24 resize-none"
+                  placeholder="Must land bolts. No toe drag."
+                  value={newChallenge.description}
+                  onChange={e => setNewChallenge({...newChallenge, description: e.target.value})}
+                />
+              </div>
+
+              <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                 <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest mb-1">XP Reward:</p>
+                 <div className="text-xl font-black italic text-amber-500">
+                    {newChallenge.difficulty === Difficulty.BEGINNER ? '+150 XP' : newChallenge.difficulty === Difficulty.INTERMEDIATE ? '+300 XP' : '+500 XP'}
+                 </div>
+              </div>
+
+              <button 
+                type="submit" 
+                className="w-full py-4 bg-amber-500 text-white rounded-xl font-black uppercase tracking-widest text-xs shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"
+              >
+                <Swords size={16} /> Post Challenge
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Video Submission Viewer Modal */}
+      {viewingSubmission && (
+        <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4">
+           <div className="relative w-full max-w-lg aspect-[9/16] md:aspect-video bg-black rounded-[2rem] overflow-hidden border border-slate-800 shadow-2xl animate-view">
+              <button 
+                onClick={() => setViewingSubmission(null)}
+                className="absolute top-4 right-4 z-20 p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-white hover:text-black transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
+                 <div className="w-8 h-8 rounded-full border border-white/20 overflow-hidden">
+                    <img src={viewingSubmission.userAvatar} alt="" className="w-full h-full object-cover" />
+                 </div>
+                 <div>
+                    <p className="text-white text-xs font-black italic uppercase shadow-black drop-shadow-md">{viewingSubmission.userName}</p>
+                    <p className="text-slate-300 text-[9px] font-bold uppercase tracking-widest drop-shadow-md">{viewingSubmission.date}</p>
+                 </div>
+              </div>
+
+              <video 
+                src={viewingSubmission.videoUrl}
+                className="w-full h-full object-cover"
+                controls
+                autoPlay
+                playsInline
+                loop
+              />
+           </div>
         </div>
       )}
 
@@ -1275,6 +1378,31 @@ const SpotsView: React.FC = () => {
                 </button>
              </form>
           </div>
+        </div>
+      )}
+
+      {/* Unlock Celebration Modal */}
+      {unlockedItem && (
+        <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-6">
+           <div className="flex flex-col items-center text-center space-y-6 animate-view">
+             <div className="relative">
+               <div className="absolute inset-0 bg-indigo-500 blur-[80px] opacity-50 animate-pulse"></div>
+               <img src={unlockedItem.imageUrl} className="w-48 h-48 object-contain relative z-10 drop-shadow-2xl" alt="Unlocked" />
+             </div>
+             
+             <div className="space-y-2 relative z-10">
+               <h2 className="text-sm font-black uppercase tracking-[0.5em] text-indigo-400">Challenge Crushed!</h2>
+               <h1 className="text-4xl font-black uppercase italic tracking-tighter text-white">{unlockedItem.name}</h1>
+               <p className="text-slate-400 text-sm max-w-xs mx-auto">{unlockedItem.description}</p>
+             </div>
+
+             <button 
+               onClick={() => setUnlockedItem(null)}
+               className="bg-white text-black px-8 py-3 rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform"
+             >
+               Collect Reward
+             </button>
+           </div>
         </div>
       )}
     </div>

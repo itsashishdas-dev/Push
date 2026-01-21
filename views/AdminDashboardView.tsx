@@ -14,9 +14,11 @@ import {
   Activity, 
   Database,
   Search,
-  Filter
+  Filter,
+  FileText,
+  Play
 } from 'lucide-react';
-import { Spot, VerificationStatus, Discipline } from '../types';
+import { Spot, VerificationStatus, Discipline, MentorApplication, User } from '../types';
 import { backend } from '../services/mockBackend';
 
 interface AdminDashboardViewProps {
@@ -25,9 +27,10 @@ interface AdminDashboardViewProps {
 
 const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
   const [spots, setSpots] = useState<Spot[]>([]);
+  const [mentorApps, setMentorApps] = useState<{ user: User, application: MentorApplication }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'verifications' | 'spots' | 'users'>('verifications');
+  const [activeTab, setActiveTab] = useState<'verifications' | 'spots' | 'users' | 'mentor-apps'>('verifications');
 
   useEffect(() => {
     loadData();
@@ -36,7 +39,9 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
   const loadData = async () => {
     setIsLoading(true);
     const allSpots = await backend.getSpots();
+    const pendingApps = await backend.getPendingMentorApplications();
     setSpots(allSpots);
+    setMentorApps(pendingApps);
     setIsLoading(false);
   };
 
@@ -53,6 +58,11 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
     const filtered = allSpots.filter(s => s.id !== spotId);
     localStorage.setItem('push_spots_data', JSON.stringify(filtered));
     loadData();
+  };
+
+  const handleReviewApp = async (userId: string, approved: boolean) => {
+      await backend.reviewMentorApplication(userId, approved);
+      loadData();
   };
 
   const pendingSpots = spots.filter(s => s.verificationStatus === VerificationStatus.PENDING);
@@ -78,35 +88,40 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
       </header>
 
       {/* Quick Stats */}
-      <section className="grid grid-cols-3 gap-3">
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
-          <Database size={16} className="text-indigo-400" />
-          <div className="text-xl font-black italic">{spots.length}</div>
-          <div className="text-[8px] text-slate-500 font-black uppercase">Total Spots</div>
+      <section className="grid grid-cols-4 gap-2">
+        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+          <Database size={14} className="text-indigo-400" />
+          <div className="text-lg font-black italic">{spots.length}</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase">Spots</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
-          <AlertCircle size={16} className="text-amber-500" />
-          <div className="text-xl font-black italic">{pendingSpots.length}</div>
-          <div className="text-[8px] text-slate-500 font-black uppercase">Pending</div>
+        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+          <AlertCircle size={14} className="text-amber-500" />
+          <div className="text-lg font-black italic">{pendingSpots.length}</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase">Verify</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
-          <Activity size={16} className="text-green-500" />
-          <div className="text-xl font-black italic">142</div>
-          <div className="text-[8px] text-slate-500 font-black uppercase">Daily Active</div>
+        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+          <Users size={14} className="text-blue-400" />
+          <div className="text-lg font-black italic">{mentorApps.length}</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase">Apps</div>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+          <Activity size={14} className="text-green-500" />
+          <div className="text-lg font-black italic">142</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase">Active</div>
         </div>
       </section>
 
       {/* View Selector */}
-      <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800">
-        {['verifications', 'spots', 'users'].map((t) => (
+      <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 overflow-x-auto hide-scrollbar">
+        {['verifications', 'mentor-apps', 'spots', 'users'].map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t as any)}
-            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`flex-1 min-w-[80px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
               activeTab === t ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500'
             }`}
           >
-            {t}
+            {t.replace('-', ' ')}
           </button>
         ))}
       </div>
@@ -163,6 +178,74 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
               ))
             )}
           </div>
+        )}
+
+        {activeTab === 'mentor-apps' && (
+            <div className="space-y-4">
+                <h2 className="text-sm font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
+                    <FileText size={16} /> Mentor Requests
+                </h2>
+                {mentorApps.length === 0 ? (
+                    <div className="py-12 text-center bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
+                        <Check size={32} className="mx-auto text-slate-700 mb-2" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">No pending applications.</p>
+                    </div>
+                ) : (
+                    mentorApps.map(({ user, application }, idx) => (
+                        <div key={idx} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                            <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
+                                <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
+                                    <img src={user.avatar} className="w-full h-full object-cover" alt="" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black uppercase italic text-white leading-none">{user.name}</h3>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Level {user.level} • {user.location}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-[8px] font-black uppercase text-indigo-400 tracking-widest mb-1">Experience</p>
+                                    <p className="text-xs text-slate-300 leading-relaxed">{application.experience}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[8px] font-black uppercase text-indigo-400 tracking-widest mb-1">Style</p>
+                                        <p className="text-xs text-slate-300">{application.style}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[8px] font-black uppercase text-indigo-400 tracking-widest mb-1">Rate</p>
+                                        <p className="text-xs text-slate-300">₹{application.rate}/hr</p>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-slate-950 rounded-xl p-3 flex items-center justify-between border border-slate-800">
+                                    <div className="flex items-center gap-2 text-slate-400">
+                                        <Play size={14} />
+                                        <span className="text-[10px] font-bold uppercase tracking-widest">{application.videoUrl}</span>
+                                    </div>
+                                    <button className="text-[9px] font-black uppercase text-indigo-400 hover:text-white">View</button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button 
+                                onClick={() => handleReviewApp(user.id, false)}
+                                className="flex-1 py-3 bg-slate-800 text-red-400 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                                >
+                                <X size={14} /> Deny
+                                </button>
+                                <button 
+                                onClick={() => handleReviewApp(user.id, true)}
+                                className="flex-[2] py-3 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform"
+                                >
+                                <Check size={14} /> Approve Mentor
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
         )}
 
         {activeTab === 'spots' && (

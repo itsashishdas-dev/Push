@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Map, Swords, Users, TrendingUp, User, LayoutGrid } from 'lucide-react';
+import { Map, Swords, Users, TrendingUp, User, LayoutGrid, Book, Film } from 'lucide-react';
 
 interface NavigationProps {
   activeTab: string;
@@ -12,7 +12,8 @@ const Navigation: React.FC<NavigationProps> = ({ activeTab, setActiveTab }) => {
     { id: 'spots', label: 'Map', icon: Map },
     { id: 'challenges', label: 'Challenges', icon: Swords },
     { id: 'mentorship', label: 'Mentors', icon: Users },
-    { id: 'skills', label: 'Journey', icon: TrendingUp },
+    { id: 'skills', label: 'Skills', icon: TrendingUp },
+    { id: 'journey', label: 'Diary', icon: Film }, // New Journey Tab
     { id: 'profile', label: 'Profile', icon: User },
   ];
 

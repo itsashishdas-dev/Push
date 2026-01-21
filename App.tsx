@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navigation from './components/Navigation';
 import SpotsView from './views/SpotsView';
@@ -5,6 +6,7 @@ import SkillsView from './views/SkillsView';
 import ProfileView from './views/ProfileView';
 import MentorshipView from './views/MentorshipView';
 import ChallengesView from './views/ChallengesView';
+import JourneyView from './views/JourneyView';
 import AdminDashboardView from './views/AdminDashboardView';
 import LoginView from './views/LoginView';
 import OnboardingView from './views/OnboardingView';
@@ -108,7 +110,7 @@ const App: React.FC = () => {
            </div>
         </div>
 
-        {/* Tab 4: Journey / Skills */}
+        {/* Tab 4: Skills (Previously labeled Journey, now just Skills) */}
         <div 
           className={`absolute inset-0 w-full h-full overflow-y-auto hide-scrollbar transition-opacity duration-300 ${activeTab === 'skills' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
           aria-hidden={activeTab !== 'skills'}
@@ -118,7 +120,17 @@ const App: React.FC = () => {
            </div>
         </div>
 
-        {/* Tab 5: Profile */}
+        {/* Tab 5: Journey (New Diary View) */}
+        <div 
+          className={`absolute inset-0 w-full h-full overflow-y-auto hide-scrollbar transition-opacity duration-300 ${activeTab === 'journey' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
+          aria-hidden={activeTab !== 'journey'}
+        >
+           <div className="w-full max-w-screen-2xl mx-auto min-h-full pb-24 md:pb-0">
+              <JourneyView />
+           </div>
+        </div>
+
+        {/* Tab 6: Profile */}
         <div 
           className={`absolute inset-0 w-full h-full overflow-y-auto hide-scrollbar transition-opacity duration-300 ${activeTab === 'profile' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}
           aria-hidden={activeTab !== 'profile'}
