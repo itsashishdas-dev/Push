@@ -6,6 +6,7 @@ import { Swords, Trophy, MapPin, Check, Video, Loader2, PlayCircle, Play, X, Upl
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
 import { COLLECTIBLES_DATABASE } from '../constants';
+import { ChallengeCardSkeleton, EmptyState } from '../components/States'; // Import States
 
 const ChallengesView: React.FC = () => {
   const [challenges, setChallenges] = useState<(Challenge & { spotName: string })[]>([]);
@@ -79,8 +80,6 @@ const ChallengesView: React.FC = () => {
     }
   };
 
-  if (loading) return <div className="p-10 text-center text-slate-500 font-bold uppercase text-xs tracking-widest">Loading Battles...</div>;
-
   return (
     <div className="pb-32 pt-6 md:pb-10 space-y-6 px-4 animate-view relative min-h-full">
       <header className="flex justify-between items-end mb-4">
@@ -96,11 +95,16 @@ const ChallengesView: React.FC = () => {
         </div>
       </header>
 
-      {challenges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-           <Swords size={48} className="text-slate-800" />
-           <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">No active battles found.</p>
+      {loading ? (
+        <div className="space-y-4">
+           {[...Array(3)].map((_, i) => <ChallengeCardSkeleton key={i} />)}
         </div>
+      ) : challenges.length === 0 ? (
+        <EmptyState 
+           icon={Swords} 
+           title="No Battles Active" 
+           description="The arena is quiet. Be the first to create a challenge at a spot." 
+        />
       ) : (
         <div className="space-y-4">
           {challenges.map(challenge => {
@@ -179,7 +183,7 @@ const ChallengesView: React.FC = () => {
       {/* Video Submission Viewer Modal */}
       {viewingSubmission && (
         <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4">
-           <div className="relative w-full max-w-lg aspect-[9/16] md:aspect-video bg-black rounded-[2rem] overflow-hidden border border-slate-800 shadow-2xl">
+           <div className="relative w-full max-w-lg aspect-[9/16] md:aspect-video bg-black rounded-[2rem] overflow-hidden border border-slate-800 shadow-2xl animate-view">
               <button 
                 onClick={() => setViewingSubmission(null)}
                 className="absolute top-4 right-4 z-20 p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-white hover:text-black transition-colors"

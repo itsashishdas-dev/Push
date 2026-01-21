@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { backend } from '../services/mockBackend';
 import { Challenge, Spot, ChallengeSubmission, User } from '../types';
 import { Map as MapIcon, List, Calendar, MapPin, PlayCircle, Loader2, Play, X, Film, Share2, Download, Instagram, MessageCircle } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
+import { JourneySkeleton, EmptyState } from '../components/States'; // Import States
 
 interface JourneyEntry {
   id: string; // Challenge ID
@@ -177,7 +179,17 @@ const JourneyView: React.FC = () => {
   };
 
   if (isLoading) {
-      return <div className="p-10 text-center text-slate-500 font-bold uppercase text-xs tracking-widest"><Loader2 className="animate-spin inline mr-2" /> Loading Journey...</div>;
+      return (
+        <div className="pb-32 pt-6 md:pb-10 space-y-6 px-4 animate-view relative min-h-full">
+            <header className="flex justify-between items-end mb-4">
+                <div>
+                    <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Journey</h1>
+                    <p className="text-slate-500 text-[9px] font-black tracking-[0.2em] uppercase">Loading History...</p>
+                </div>
+            </header>
+            <JourneySkeleton />
+        </div>
+      );
   }
 
   return (
@@ -206,11 +218,11 @@ const JourneyView: React.FC = () => {
       </div>
 
       {entries.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-           <Film size={48} className="text-slate-800" />
-           <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">No clips recorded yet.</p>
-           <p className="text-slate-600 text-[9px]">Complete challenges to build your journey.</p>
-        </div>
+        <EmptyState 
+           icon={Film} 
+           title="Your Story Starts Now" 
+           description="Complete challenges and record clips to build your personal skate journey." 
+        />
       ) : (
         <>
             {viewMode === 'timeline' && (

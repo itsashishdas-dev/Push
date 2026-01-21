@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Award, Share2, Flame, LogOut, ShieldAlert, ChevronRight, UserX, Zap, Activity, Camera, Loader2, Mountain, Package, Disc, Sticker, Trophy, Crown, Check, Lock, Bell, Volume2, Shield, HelpCircle, Edit3, X, Save, Gamepad2, Instagram, Users, Search, UserPlus, Swords, MapPin, MessageCircle, Send, ArrowLeft, Circle } from 'lucide-react';
+import { Settings, Award, Share2, Flame, LogOut, ShieldAlert, ChevronRight, UserX, Zap, Activity, Camera, Loader2, Mountain, Package, Disc, Sticker, Trophy, Crown, Check, Lock, Bell, Volume2, Shield, HelpCircle, Edit3, X, Save, Gamepad2, Instagram, Users, Search, UserPlus, Swords, MapPin, MessageCircle, Send, ArrowLeft, Circle, TrendingUp } from 'lucide-react';
 import { User, Discipline, Collectible, CollectibleType, Rarity, FriendRequest, ChatMessage } from '../types';
 import { COLLECTIBLES_DATABASE } from '../constants';
 import { backend } from '../services/mockBackend';
@@ -337,8 +337,18 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
     }
   };
 
+  // Generate tags based on discipline
+  const styleTags = [];
+  if (user.disciplines.includes(Discipline.SKATE)) {
+    styleTags.push('Street');
+    styleTags.push('Park');
+  }
+  if (user.disciplines.includes(Discipline.DOWNHILL)) {
+    styleTags.push('Downhill');
+  }
+
   return (
-    <div className="pb-32 md:pb-10 pt-6 space-y-8 px-4 animate-view max-w-4xl mx-auto w-full relative">
+    <div className="pb-32 md:pb-10 pt-6 space-y-6 px-4 animate-view max-w-4xl mx-auto w-full relative">
       <header className="flex justify-between items-center relative z-20">
         <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Profile</h1>
         <button 
@@ -352,19 +362,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
         </button>
       </header>
 
-      {/* Profile Header Card */}
-      <section className="flex flex-col sm:flex-row items-center gap-6 bg-slate-900 border border-slate-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-[64px] rounded-full -mr-16 -mt-16" />
+      {/* Identity Card */}
+      <section className="flex flex-col sm:flex-row items-center gap-6 bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 blur-[80px] rounded-full -mr-16 -mt-16 pointer-events-none" />
         
         {/* Avatar Container */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <div 
             onMouseDown={handleAvatarPressStart}
             onMouseUp={handleAvatarPressEnd}
             onTouchStart={handleAvatarPressStart}
             onTouchEnd={handleAvatarPressEnd}
             onClick={handleAvatarClick}
-            className="w-32 h-32 rounded-full border-4 border-slate-800 overflow-hidden shrink-0 ring-4 ring-slate-900 cursor-pointer active:scale-95 transition-all relative group"
+            className="w-32 h-32 rounded-full border-4 border-slate-800 overflow-hidden ring-4 ring-slate-900 cursor-pointer active:scale-95 transition-all relative group shadow-2xl"
             title="Tap to change avatar"
           >
             <img 
@@ -385,92 +395,143 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
           />
         </div>
 
-        <div className="space-y-2 text-center sm:text-left z-10 flex flex-col items-center sm:items-start w-full">
-          <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none">{user.name}</h2>
+        <div className="space-y-3 text-center sm:text-left z-10 flex flex-col items-center sm:items-start w-full">
+          <div>
+            <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none">{user.name}</h2>
+            <div className="text-slate-400 text-[10px] font-bold uppercase tracking-widest flex items-center justify-center sm:justify-start gap-1.5 mt-1">
+              <MapPin size={10} className="text-indigo-500" /> {user.location}
+            </div>
+          </div>
           
           <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-            {user.disciplines.map(d => (
-              <div key={d} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest ${
-                d === Discipline.SKATE 
-                  ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300' 
-                  : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-              }`}>
-                {d === Discipline.SKATE ? <Zap size={10} fill="currentColor" /> : <Mountain size={10} strokeWidth={2.5} />}
-                {d === Discipline.SKATE ? 'Skate' : 'Downhill'}
+            {styleTags.map(tag => (
+              <div key={tag} className="flex items-center gap-1.5 px-3 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest bg-slate-950 border-slate-800 text-slate-300 shadow-sm">
+                {tag === 'Downhill' ? <Mountain size={10} strokeWidth={2.5} /> : <Zap size={10} fill="currentColor" />}
+                {tag}
               </div>
             ))}
           </div>
           
-          <div className="text-slate-400 text-xs font-medium flex items-center gap-1.5 mt-2">
-            <MapPin size={12} /> {user.location}
-          </div>
-          
-          <p className="text-xs text-slate-500 italic mt-1 line-clamp-2">{user.bio}</p>
+          {user.bio && (
+            <p className="text-xs text-slate-400 font-medium italic leading-relaxed max-w-sm">"{user.bio}"</p>
+          )}
 
           <button 
              onClick={() => setShowEditProfile(true)}
-             className="mt-4 bg-slate-800 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-colors flex items-center gap-2"
+             className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/50 px-5 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center gap-2 active:scale-95 shadow-lg"
           >
-             <Edit3 size={12} /> Edit Profile
+             <Edit3 size={10} /> Edit Bio & Profile
           </button>
         </div>
       </section>
 
-      {/* Level Progress */}
-      <section className="bg-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden">
-         <div className="flex justify-between items-end mb-2 relative z-10">
-            <div>
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Current Level</span>
-               <div className="text-4xl font-black italic text-white leading-none">
-                  LVL {user.level}
-               </div>
+      {/* Grouped Stats Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        {/* 1. Progress Section */}
+        <section className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] space-y-5 shadow-xl">
+            <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-2 pl-1">
+                <TrendingUp size={14} className="text-indigo-500" /> Skate Journey
+            </h3>
+            
+            {/* XP Progress Bar */}
+            <div className="space-y-2 bg-slate-950 p-4 rounded-2xl border border-slate-800">
+                <div className="flex justify-between items-end">
+                    <div>
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">Current Rank</span>
+                      <span className="text-2xl font-black italic text-white leading-none">LVL {user.level}</span>
+                    </div>
+                    <div className="text-right">
+                        <div className="text-indigo-400 text-xs font-black">{user.xp} XP</div>
+                    </div>
+                </div>
+                <div className="h-2.5 bg-slate-800 rounded-full overflow-hidden relative">
+                    <div 
+                        className={`h-full bg-indigo-500 relative ${animateLevel ? 'animate-pulse' : ''}`} 
+                        style={{ width: `${(user.xp % 1000) / 10}%` }} 
+                    >
+                        <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]" />
+                    </div>
+                </div>
+                <p className="text-[8px] text-slate-600 font-bold uppercase tracking-wider text-right">{1000 - (user.xp % 1000)} XP to Next Level</p>
             </div>
-            <div className="text-right">
-               <div className="text-indigo-400 text-xs font-black">{user.xp} XP</div>
-               <span className="text-[8px] font-bold uppercase text-slate-600">Total Experience</span>
-            </div>
-         </div>
-         {/* Progress Bar */}
-         <div className="h-3 bg-slate-800 rounded-full overflow-hidden relative z-10">
-            <div 
-               className={`h-full bg-indigo-500 relative ${animateLevel ? 'animate-pulse' : ''}`} 
-               style={{ width: `${(user.xp % 1000) / 10}%` }} 
-            >
-               <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]" />
-            </div>
-         </div>
-         <p className="text-[9px] text-slate-500 mt-2 font-medium text-right relative z-10">{1000 - (user.xp % 1000)} XP to Next Level</p>
-         
-         <div className="absolute top-0 right-0 w-40 h-40 bg-indigo-500/5 blur-3xl -mr-10 -mt-10" />
-      </section>
 
-      {/* Stats Grid */}
-      <section className="grid grid-cols-3 gap-3">
-         <div 
-           onClick={simulateStreak}
-           className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform"
-         >
-            <Flame size={20} className={user.streak > 0 ? "text-amber-500" : "text-slate-600"} />
-            <span className="text-xl font-black italic text-white">{user.streak}</span>
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Streak</span>
-         </div>
-         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-1">
-            <Trophy size={20} className="text-indigo-500" />
-            <span className="text-xl font-black italic text-white">{user.masteredCount}</span>
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Tricks</span>
-         </div>
-         <div 
-           onClick={() => { setShowFriendsModal(true); playSound('click'); }}
-           className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-transform"
-         >
-            <Users size={20} className="text-green-500" />
-            <span className="text-xl font-black italic text-white">{user.friends.length}</span>
-            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Friends</span>
-         </div>
-      </section>
+            {/* Quick Progress Stats */}
+            <div className="grid grid-cols-2 gap-3">
+                <div 
+                  onClick={simulateStreak}
+                  className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 transition-all hover:border-amber-500/30 group"
+                >
+                    <Flame size={20} className={`transition-colors ${user.streak > 0 ? "text-amber-500" : "text-slate-600 group-hover:text-amber-500"}`} />
+                    <span className="text-xl font-black italic text-white">{user.streak}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Day Streak</span>
+                </div>
+                <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center gap-1">
+                    <Trophy size={20} className="text-indigo-500" />
+                    <span className="text-xl font-black italic text-white">{user.masteredCount}</span>
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Tricks Mastered</span>
+                </div>
+            </div>
+        </section>
+
+        {/* 2. Community Section */}
+        <section className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] space-y-5 shadow-xl">
+             <h3 className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500 flex items-center gap-2 pl-1">
+                <Users size={14} className="text-green-500" /> Community
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3 h-full pb-1">
+                <div 
+                  onClick={() => { setShowFriendsModal(true); playSound('click'); }}
+                  className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-95 transition-all hover:border-green-500/30 min-h-[100px]"
+                >
+                    <div className="flex justify-between items-start">
+                       <Users size={18} className="text-green-500" />
+                       <ChevronRight size={14} className="text-slate-700" />
+                    </div>
+                    <div>
+                       <span className="text-2xl font-black italic text-white block">{user.friends.length}</span>
+                       <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Squad Members</span>
+                    </div>
+                </div>
+                
+                <div 
+                  onClick={() => { setShowFriendsModal(true); setActiveFriendTab('requests'); playSound('click'); }}
+                  className="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col justify-between cursor-pointer active:scale-95 transition-all hover:border-indigo-500/30 min-h-[100px]"
+                >
+                    <div className="flex justify-between items-start">
+                       <UserPlus size={18} className={user.friendRequests.length > 0 ? "text-amber-500 animate-pulse" : "text-slate-600"} />
+                       {user.friendRequests.length > 0 && <div className="w-2 h-2 bg-amber-500 rounded-full"></div>}
+                    </div>
+                    <div>
+                       <span className="text-2xl font-black italic text-white block">{user.friendRequests.length}</span>
+                       <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">Requests</span>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Invite / Share CTA */}
+            <button 
+              onClick={() => {
+                 if (navigator.share) {
+                    navigator.share({
+                        title: 'Join me on PUSH',
+                        text: `Check out my skate profile on PUSH! Level ${user.level} ${user.disciplines[0]} skater.`,
+                        url: window.location.href
+                    });
+                 } else {
+                    alert("Link copied to clipboard!");
+                 }
+              }}
+              className="w-full py-3 bg-slate-800 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center justify-center gap-2 hover:text-white transition-colors border border-slate-700/50"
+            >
+               <Share2 size={12} /> Invite Crew
+            </button>
+        </section>
+      </div>
 
       {/* Locker / Collectibles */}
-      <section className="space-y-4">
+      <section className="space-y-4 pt-2">
          <h3 className="text-lg font-black uppercase italic tracking-tight text-white px-2 flex items-center gap-2">
             <Package size={18} className="text-slate-500" /> Locker
          </h3>

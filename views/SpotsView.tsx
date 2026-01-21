@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, SlidersHorizontal, Plus, Map as MapIcon, Layers, Info, Target, Trophy, X, Calendar, Clock, MessageSquare, UserPlus, Check, MapPin, ShieldCheck, AlertCircle, Camera, Trash2, Loader2, ExternalLink, Globe, ChevronDown, Sparkles, CloudSun, Wind, Thermometer, Star, Activity, ImagePlus, UserCheck, Send, ShieldAlert, Filter, Navigation as NavIcon, Edit2, MessageCircle, Grid, RefreshCw, CalendarDays, ChevronRight, Home, Zap, Mountain, BookOpen, Video, Award, PlayCircle, Play, MessageCircleMore, Locate, Swords } from 'lucide-react';
+import { Search, SlidersHorizontal, Plus, Map as MapIcon, Layers, Info, Target, Trophy, X, Calendar, Clock, MessageSquare, UserPlus, Check, MapPin, ShieldCheck, AlertCircle, Camera, Trash2, Loader2, ExternalLink, Globe, ChevronDown, Sparkles, CloudSun, Wind, Thermometer, Star, Activity, ImagePlus, UserCheck, Send, ShieldAlert, Filter, Navigation as NavIcon, Edit2, MessageCircle, Grid, RefreshCw, CalendarDays, ChevronRight, Home, Zap, Mountain, BookOpen, Video, Award, PlayCircle, Play, MessageCircleMore, Locate, Swords, Ghost, SearchX } from 'lucide-react';
 import { Discipline, Spot, Session, Difficulty, VerificationStatus, Collectible, ChatMessage, DailyNote, Challenge, ChallengeSubmission, User } from '../types';
 import SpotCard from '../components/SpotCard';
 import SessionCard from '../components/SessionCard';
 import DrillDownCard from '../components/DrillDownCard';
+import { SpotCardSkeleton, EmptyState, ErrorState } from '../components/States'; // Import States
 import { searchPlaces, getMotivationalQuote, generateStateCover } from '../services/geminiService';
 import { backend, ExtendedSession } from '../services/mockBackend';
 import { COLLECTIBLES_DATABASE, STATE_LANDMARKS, STATE_IMAGES } from '../constants';
@@ -16,8 +17,8 @@ const SpotsView: React.FC = () => {
   const [allSpots, setAllSpots] = useState<Spot[]>([]);
   const [upcomingSessions, setUpcomingSessions] = useState<ExtendedSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false); // Error State
   const [stateCovers, setStateCovers] = useState<Record<string, string>>({});
-  const [generatingStates, setGeneratingStates] = useState<Set<string>>(new Set());
   
   // Navigation State (Drill Down)
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
@@ -107,16 +108,16 @@ const SpotsView: React.FC = () => {
     return () => clearInterval(checkL);
   }, []);
 
-  // Initialization Effect
-  useEffect(() => {
-    const init = async () => {
+  const loadData = async () => {
+    setIsLoading(true);
+    setIsError(false);
+    try {
       const user = await backend.getUser();
       setCurrentUser(user.name);
       setFullUser(user);
       
       const spots = await backend.getSpots();
       setAllSpots(spots);
-      setIsLoading(false);
       
       const sessions = await backend.getAllSessions();
       setUpcomingSessions(sessions.slice(0, 5));
@@ -134,8 +135,17 @@ const SpotsView: React.FC = () => {
 
       // Get Completed Challenges
       setUserCompletedChallenges(user.completedChallengeIds);
-    };
-    init();
+    } catch (e) {
+      console.error("Failed to load spots data", e);
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initialization Effect
+  useEffect(() => {
+    loadData();
 
     // Geolocate - Silent update of coords, map view stays on default until requested
     if (navigator.geolocation) {
@@ -222,7 +232,7 @@ const SpotsView: React.FC = () => {
 
   // Map Initialization & Updates
   useEffect(() => {
-    if (viewMode === 'map' && mapContainerRef.current && (window as any).L) {
+    if (viewMode === 'map' && mapContainerRef.current && (window as any).L && !isLoading && !isError) {
       if (!mapInstanceRef.current) {
         // Default view set to India
         const map = (window as any).L.map(mapContainerRef.current, {
@@ -267,7 +277,7 @@ const SpotsView: React.FC = () => {
          }
       });
     }
-  }, [viewMode, filteredSpots, userCoords]);
+  }, [viewMode, filteredSpots, userCoords, isLoading, isError]);
 
   const handleFindNearest = () => {
     setIsSearchingLocation(true);
@@ -327,187 +337,18 @@ const SpotsView: React.FC = () => {
     setIsSearchOpen(false);
   };
 
-  const handleAddSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSpot || !newSession.date || !newSession.time) return;
-    let updatedSessions = [...selectedSpot.sessions];
-    let sessionId = editingSessionId || Math.random().toString(36).substr(2, 9);
-    if (editingSessionId) {
-      updatedSessions = updatedSessions.map(s => s.id === editingSessionId ? { ...s, title: newSession.title || 'Untitled Session', date: newSession.date, time: newSession.time, note: newSession.note } : s);
-    } else {
-      const session: Session = { id: sessionId, userId: 'u-arjun', userName: 'Arjun S.', title: newSession.title || 'Untitled Session', date: newSession.date, time: newSession.time, note: newSession.note, attendees: ['Arjun S.'] };
-      updatedSessions.push(session);
-    }
-    const updatedSpot = { ...selectedSpot, sessions: updatedSessions };
-    const saved = await backend.saveSpot(updatedSpot);
-    setAllSpots(prev => prev.map(s => s.id === saved.id ? saved : s));
-    setSelectedSpot(saved);
-    setShowScheduleForm(false);
-    setEditingSessionId(null);
-    const sessions = await backend.getAllSessions();
-    setUpcomingSessions(sessions.slice(0, 5));
-    const { newUnlocks } = await backend.logSession(sessionId);
-    if (newUnlocks.length > 0) {
-       const item = COLLECTIBLES_DATABASE.find(c => c.id === newUnlocks[0]);
-       if (item) { setTimeout(() => { setUnlockedItem(item); playSound('unlock'); }, 600); }
-    }
-    const updatedNow = new Date();
-    setNewSession({ title: '', date: updatedNow.toISOString().split('T')[0], time: updatedNow.toTimeString().split(' ')[0].substring(0, 5), note: '' });
-  };
-
-  const handleJoinSession = async (sessionId: string) => {
-    if (!selectedSpot) return;
-    triggerHaptic('medium');
-    playSound('click');
-    try {
-      const updatedSpot = await backend.joinSession(selectedSpot.id, sessionId);
-      const spotIndex = allSpots.findIndex(s => s.id === updatedSpot.id);
-      const newSpots = [...allSpots];
-      newSpots[spotIndex] = updatedSpot;
-      setAllSpots(newSpots);
-      setSelectedSpot(updatedSpot);
-      const sessions = await backend.getAllSessions();
-      setUpcomingSessions(sessions.slice(0, 5));
-      playSound('success');
-    } catch (e) {
-      console.error("Join failed", e);
-    }
-  };
-
-  const handleOpenChat = async (sessionId: string) => {
-    setActiveSessionChat(sessionId);
-    const msgs = await backend.getSessionMessages(sessionId);
-    setChatMessages(msgs);
-    setTimeout(() => chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  };
-
-  const handleSendChatMessage = async () => {
-    if (!chatInput.trim() || !activeSessionChat) return;
-    const txt = chatInput;
-    setChatInput('');
-    const tempMsg: ChatMessage = {
-      id: Math.random().toString(),
-      sessionId: activeSessionChat,
-      userId: fullUser?.id || 'me',
-      userName: currentUser,
-      text: txt,
-      timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-      isSystem: false
-    };
-    setChatMessages(prev => [...prev, tempMsg]);
-    await backend.sendSessionMessage(activeSessionChat, txt);
-    const msgs = await backend.getSessionMessages(activeSessionChat);
-    setChatMessages(msgs);
-    setTimeout(() => chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  };
-
-  const handlePostReview = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSpot || !newReview.text.trim()) return;
-    setIsPostingReview(true);
-    try {
-      const updatedSpot = await backend.addReview(selectedSpot.id, {
-        userId: fullUser?.id || 'anon',
-        userName: currentUser || 'Skater',
-        rating: newReview.rating,
-        text: newReview.text
-      });
-      setAllSpots(prev => prev.map(s => s.id === updatedSpot.id ? updatedSpot : s));
-      setSelectedSpot(updatedSpot);
-      setNewReview({ rating: 5, text: '' });
-      triggerHaptic('success');
-      playSound('success');
-    } catch (e) { console.error(e); } finally { setIsPostingReview(false); }
-  };
-
-  const handleCreateChallenge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSpot) return;
-    const xpReward = newChallenge.difficulty === Difficulty.BEGINNER ? 150 : newChallenge.difficulty === Difficulty.INTERMEDIATE ? 300 : 500;
-    const created = await backend.createChallenge({
-      spotId: selectedSpot.id,
-      title: newChallenge.title,
-      description: newChallenge.description,
-      difficulty: newChallenge.difficulty,
-      xpReward
-    });
-    setSpotChallenges(prev => [...prev, created]);
-    setShowCreateChallenge(false);
-    setNewChallenge({ title: '', description: '', difficulty: Difficulty.INTERMEDIATE });
-    triggerHaptic('success');
-    playSound('success');
-  };
-
-  const handleUploadAttempt = async (e: React.ChangeEvent<HTMLInputElement>, challengeId: string) => {
-    if (e.target.files && e.target.files[0]) {
-      setUploadingChallengeId(challengeId);
-      triggerHaptic('medium');
-      playSound('click');
-      try {
-        const { newUnlocks, user } = await backend.completeChallenge(challengeId);
-        setUserCompletedChallenges(user.completedChallengeIds);
-        setSpotChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, completions: c.completions + 1 } : c));
-        const newSubs = await backend.getChallengeSubmissions(challengeId);
-        setSubmissionsMap(prev => ({ ...prev, [challengeId]: newSubs }));
-        setUploadingChallengeId(null);
-        triggerHaptic('success');
-        playSound('unlock');
-        if (newUnlocks.length > 0) {
-           const item = COLLECTIBLES_DATABASE.find(c => c.id === newUnlocks[0]);
-           if (item) setUnlockedItem(item);
-        }
-      } catch (error) { console.error("Upload failed", error); setUploadingChallengeId(null); }
-    }
-  };
-
-  const handleLocationSearch = async (val: string) => {
-    setLocationQuery(val);
-    setNewSpotData(prev => ({ ...prev, address: val }));
-    if (searchTimeout.current) window.clearTimeout(searchTimeout.current);
-    if (val.length < 3) { setLocationResults([]); setShowLocationDropdown(false); return; }
-    searchTimeout.current = window.setTimeout(async () => {
-      setIsSearchingLocation(true); setShowLocationDropdown(true);
-      const res = await searchPlaces(val);
-      setLocationResults(res); setIsSearchingLocation(false);
-    }, 600);
-  };
-
-  const selectLocation = (loc: { title: string; uri: string }) => {
-    setNewSpotData(prev => ({ ...prev, address: loc.title }));
-    setLocationQuery(loc.title); setShowLocationDropdown(false);
-  };
-
-  const useCurrentLocation = () => {
-    if (navigator.geolocation) {
-      setIsSearchingLocation(true);
-      navigator.geolocation.getCurrentPosition(async (pos) => {
-          const lat = pos.coords.latitude; const lng = pos.coords.longitude;
-          setUserCoords({ lat, lng });
-          const displayAddr = `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`;
-          setLocationQuery(displayAddr);
-          setNewSpotData(prev => ({ ...prev, address: displayAddr }));
-          setIsSearchingLocation(false);
-        },
-        () => { setIsSearchingLocation(false); alert("Could not access your location. Please check your settings."); }
-      );
-    }
-  };
-
-  const handleAddSpotSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const spot: Spot = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newSpotData.name, type: newSpotData.type, difficulty: newSpotData.difficulty, state: newSpotData.state || 'Unknown',
-      location: { lat: 0, lng: 0, address: newSpotData.address },
-      notes: newSpotData.notes, images: newSpotData.images, isVerified: false, 
-      verificationStatus: VerificationStatus.UNVERIFIED, rating: 0, sessions: []
-    };
-    const saved = await backend.saveSpot(spot);
-    setAllSpots(prev => [saved, ...prev]);
-    setShowAddSpotForm(false);
-    setNewSpotData({ name: '', type: Discipline.SKATE, difficulty: Difficulty.BEGINNER, address: '', state: '', notes: '', images: [] });
-    setLocationQuery('');
-  };
+  // ... (Handlers for sessions, challenges, reviews etc. kept same for brevity, assuming existing logic persists) ...
+  const handleAddSession = async (e: React.FormEvent) => { e.preventDefault(); /* ...existing logic... */ if (!selectedSpot || !newSession.date || !newSession.time) return; let updatedSessions = [...selectedSpot.sessions]; let sessionId = editingSessionId || Math.random().toString(36).substr(2, 9); if (editingSessionId) { updatedSessions = updatedSessions.map(s => s.id === editingSessionId ? { ...s, title: newSession.title || 'Untitled Session', date: newSession.date, time: newSession.time, note: newSession.note } : s); } else { const session: Session = { id: sessionId, userId: 'u-arjun', userName: 'Arjun S.', title: newSession.title || 'Untitled Session', date: newSession.date, time: newSession.time, note: newSession.note, attendees: ['Arjun S.'] }; updatedSessions.push(session); } const updatedSpot = { ...selectedSpot, sessions: updatedSessions }; const saved = await backend.saveSpot(updatedSpot); setAllSpots(prev => prev.map(s => s.id === saved.id ? saved : s)); setSelectedSpot(saved); setShowScheduleForm(false); setEditingSessionId(null); const sessions = await backend.getAllSessions(); setUpcomingSessions(sessions.slice(0, 5)); const { newUnlocks } = await backend.logSession(sessionId); if (newUnlocks.length > 0) { const item = COLLECTIBLES_DATABASE.find(c => c.id === newUnlocks[0]); if (item) { setTimeout(() => { setUnlockedItem(item); playSound('unlock'); }, 600); } } const updatedNow = new Date(); setNewSession({ title: '', date: updatedNow.toISOString().split('T')[0], time: updatedNow.toTimeString().split(' ')[0].substring(0, 5), note: '' }); };
+  const handleJoinSession = async (sessionId: string) => { if (!selectedSpot) return; triggerHaptic('medium'); playSound('click'); try { const updatedSpot = await backend.joinSession(selectedSpot.id, sessionId); const spotIndex = allSpots.findIndex(s => s.id === updatedSpot.id); const newSpots = [...allSpots]; newSpots[spotIndex] = updatedSpot; setAllSpots(newSpots); setSelectedSpot(updatedSpot); const sessions = await backend.getAllSessions(); setUpcomingSessions(sessions.slice(0, 5)); playSound('success'); } catch (e) { console.error("Join failed", e); } };
+  const handleOpenChat = async (sessionId: string) => { setActiveSessionChat(sessionId); const msgs = await backend.getSessionMessages(sessionId); setChatMessages(msgs); setTimeout(() => chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); };
+  const handleSendChatMessage = async () => { if (!chatInput.trim() || !activeSessionChat) return; const txt = chatInput; setChatInput(''); const tempMsg: ChatMessage = { id: Math.random().toString(), sessionId: activeSessionChat, userId: fullUser?.id || 'me', userName: currentUser, text: txt, timestamp: new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), isSystem: false }; setChatMessages(prev => [...prev, tempMsg]); await backend.sendSessionMessage(activeSessionChat, txt); const msgs = await backend.getSessionMessages(activeSessionChat); setChatMessages(msgs); setTimeout(() => chatScrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100); };
+  const handlePostReview = async (e: React.FormEvent) => { e.preventDefault(); if (!selectedSpot || !newReview.text.trim()) return; setIsPostingReview(true); try { const updatedSpot = await backend.addReview(selectedSpot.id, { userId: fullUser?.id || 'anon', userName: currentUser || 'Skater', rating: newReview.rating, text: newReview.text }); setAllSpots(prev => prev.map(s => s.id === updatedSpot.id ? updatedSpot : s)); setSelectedSpot(updatedSpot); setNewReview({ rating: 5, text: '' }); triggerHaptic('success'); playSound('success'); } catch (e) { console.error(e); } finally { setIsPostingReview(false); } };
+  const handleCreateChallenge = async (e: React.FormEvent) => { e.preventDefault(); if (!selectedSpot) return; const xpReward = newChallenge.difficulty === Difficulty.BEGINNER ? 150 : newChallenge.difficulty === Difficulty.INTERMEDIATE ? 300 : 500; const created = await backend.createChallenge({ spotId: selectedSpot.id, title: newChallenge.title, description: newChallenge.description, difficulty: newChallenge.difficulty, xpReward }); setSpotChallenges(prev => [...prev, created]); setShowCreateChallenge(false); setNewChallenge({ title: '', description: '', difficulty: Difficulty.INTERMEDIATE }); triggerHaptic('success'); playSound('success'); };
+  const handleUploadAttempt = async (e: React.ChangeEvent<HTMLInputElement>, challengeId: string) => { if (e.target.files && e.target.files[0]) { setUploadingChallengeId(challengeId); triggerHaptic('medium'); playSound('click'); try { const { newUnlocks, user } = await backend.completeChallenge(challengeId); setUserCompletedChallenges(user.completedChallengeIds); setSpotChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, completions: c.completions + 1 } : c)); const newSubs = await backend.getChallengeSubmissions(challengeId); setSubmissionsMap(prev => ({ ...prev, [challengeId]: newSubs })); setUploadingChallengeId(null); triggerHaptic('success'); playSound('unlock'); if (newUnlocks.length > 0) { const item = COLLECTIBLES_DATABASE.find(c => c.id === newUnlocks[0]); if (item) setUnlockedItem(item); } } catch (error) { console.error("Upload failed", error); setUploadingChallengeId(null); } } };
+  const handleLocationSearch = async (val: string) => { setLocationQuery(val); setNewSpotData(prev => ({ ...prev, address: val })); if (searchTimeout.current) window.clearTimeout(searchTimeout.current); if (val.length < 3) { setLocationResults([]); setShowLocationDropdown(false); return; } searchTimeout.current = window.setTimeout(async () => { setIsSearchingLocation(true); setShowLocationDropdown(true); const res = await searchPlaces(val); setLocationResults(res); setIsSearchingLocation(false); }, 600); };
+  const selectLocation = (loc: { title: string; uri: string }) => { setNewSpotData(prev => ({ ...prev, address: loc.title })); setLocationQuery(loc.title); setShowLocationDropdown(false); };
+  const useCurrentLocation = () => { if (navigator.geolocation) { setIsSearchingLocation(true); navigator.geolocation.getCurrentPosition(async (pos) => { const lat = pos.coords.latitude; const lng = pos.coords.longitude; setUserCoords({ lat, lng }); const displayAddr = `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`; setLocationQuery(displayAddr); setNewSpotData(prev => ({ ...prev, address: displayAddr })); setIsSearchingLocation(false); }, () => { setIsSearchingLocation(false); alert("Could not access your location. Please check your settings."); } ); } };
+  const handleAddSpotSubmit = async (e: React.FormEvent) => { e.preventDefault(); const spot: Spot = { id: Math.random().toString(36).substr(2, 9), name: newSpotData.name, type: newSpotData.type, difficulty: newSpotData.difficulty, state: newSpotData.state || 'Unknown', location: { lat: 0, lng: 0, address: newSpotData.address }, notes: newSpotData.notes, images: newSpotData.images, isVerified: false, verificationStatus: VerificationStatus.UNVERIFIED, rating: 0, sessions: [] }; const saved = await backend.saveSpot(spot); setAllSpots(prev => [saved, ...prev]); setShowAddSpotForm(false); setNewSpotData({ name: '', type: Discipline.SKATE, difficulty: Difficulty.BEGINNER, address: '', state: '', notes: '', images: [] }); setLocationQuery(''); };
 
   // Helper consts
   const activeFilterCount = [disciplineFilter !== 'all', difficultyFilter !== 'all', ratingFilter > 0, activeSessionsOnly].filter(Boolean).length;
@@ -570,13 +411,9 @@ const SpotsView: React.FC = () => {
   const hasMore = currentViewData.type === 'spots' && (currentViewData.data as Spot[]).length > spotLimit;
   const spotIntel = selectedSpot ? parseSpotNotes(selectedSpot.notes) : null;
 
-  if (isLoading) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center space-y-4 bg-black">
-        <Loader2 className="animate-spin text-indigo-500" size={40} />
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">Connecting to PUSH Network...</p>
-      </div>
-    );
+  // Render Error State
+  if (isError) {
+    return <ErrorState onRetry={loadData} message="Unable to connect to the spot network." />;
   }
 
   return (
@@ -616,7 +453,7 @@ const SpotsView: React.FC = () => {
         </header>
 
         {/* Latest Note (Hero Section) */}
-        {navigationPath.length === 0 && searchQuery === '' && latestNote && (
+        {navigationPath.length === 0 && searchQuery === '' && latestNote && !isLoading && (
           <div className="mb-2">
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg relative overflow-hidden">
                <div className="flex items-center gap-2 mb-2">
@@ -631,7 +468,7 @@ const SpotsView: React.FC = () => {
         )}
 
         {/* Happening Soon Section */}
-        {upcomingSessions.length > 0 && navigationPath.length === 0 && searchQuery === '' && (
+        {upcomingSessions.length > 0 && navigationPath.length === 0 && searchQuery === '' && !isLoading && (
           <section className="space-y-3 min-h-[160px]">
              <div className="flex items-center justify-between px-1">
                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
@@ -719,73 +556,95 @@ const SpotsView: React.FC = () => {
 
         {viewMode === 'grid' ? (
           <div className="min-h-[300px] animate-view">
-             {/* 1. STATES VIEW */}
-             {currentViewData.type === 'states' && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                   {(currentViewData.data as any[]).length === 0 ? (
-                      <div className="col-span-full py-12 text-center space-y-4">
-                        <Info className="mx-auto text-slate-700" size={32} />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No states available.</p>
-                      </div>
-                   ) : (
-                     (currentViewData.data as any[]).map((state) => (
-                        <DrillDownCard 
-                          key={state.name}
-                          title={state.name}
-                          count={state.total}
-                          imageUrl={state.image}
-                          type="state"
-                          onClick={() => handleDrillDown(state.name)}
-                        />
-                     ))
-                   )}
+             
+             {/* LOADING STATE - GRID */}
+             {isLoading ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                   {[...Array(8)].map((_, i) => <SpotCardSkeleton key={i} />)}
                 </div>
-             )}
+             ) : (
+               <>
+                 {/* 1. STATES VIEW */}
+                 {currentViewData.type === 'states' && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                       {(currentViewData.data as any[]).length === 0 ? (
+                          <div className="col-span-full">
+                             <EmptyState 
+                                icon={SearchX} 
+                                title="No States Found" 
+                                description="We couldn't find any states with spots matching your criteria."
+                                actionLabel="Clear Filters"
+                                onAction={resetFilters}
+                             />
+                          </div>
+                       ) : (
+                         (currentViewData.data as any[]).map((state) => (
+                            <DrillDownCard 
+                              key={state.name}
+                              title={state.name}
+                              count={state.total}
+                              imageUrl={state.image}
+                              type="state"
+                              onClick={() => handleDrillDown(state.name)}
+                            />
+                         ))
+                       )}
+                    </div>
+                 )}
 
-             {/* 2. CITIES VIEW */}
-             {currentViewData.type === 'cities' && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                   {(currentViewData.data as any[]).length === 0 ? (
-                      <div className="col-span-full py-12 text-center space-y-4 bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
-                        <Info className="mx-auto text-slate-700" size={32} />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No cities found.</p>
-                      </div>
-                   ) : (
-                     (currentViewData.data as any[]).map((city) => (
-                        <DrillDownCard 
-                          key={city.name}
-                          title={city.name}
-                          count={city.count}
-                          imageUrl={city.image}
-                          type="city"
-                          onClick={() => handleDrillDown(city.name)}
-                        />
-                     ))
-                   )}
-                </div>
-             )}
+                 {/* 2. CITIES VIEW */}
+                 {currentViewData.type === 'cities' && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                       {(currentViewData.data as any[]).length === 0 ? (
+                          <div className="col-span-full">
+                             <EmptyState 
+                                icon={SearchX} 
+                                title="No Cities Found" 
+                                description="No spots available in this state."
+                             />
+                          </div>
+                       ) : (
+                         (currentViewData.data as any[]).map((city) => (
+                            <DrillDownCard 
+                              key={city.name}
+                              title={city.name}
+                              count={city.count}
+                              imageUrl={city.image}
+                              type="city"
+                              onClick={() => handleDrillDown(city.name)}
+                            />
+                         ))
+                       )}
+                    </div>
+                 )}
 
-             {/* 3. SPOTS VIEW */}
-             {currentViewData.type === 'spots' && (
-                <>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                    {visibleSpots.length === 0 ? (
-                      <div className="col-span-full py-12 text-center space-y-4 bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
-                        <Info className="mx-auto text-slate-700" size={40} />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">No matching spots found for your filters.</p>
-                        <button onClick={resetFilters} className="text-indigo-400 text-[10px] font-black uppercase tracking-widest underline">Reset Filters</button>
+                 {/* 3. SPOTS VIEW */}
+                 {currentViewData.type === 'spots' && (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                        {visibleSpots.length === 0 ? (
+                          <div className="col-span-full">
+                             <EmptyState 
+                                icon={Ghost} 
+                                title="No Spots Here" 
+                                description="Try adjusting your filters or search query to find more spots."
+                                actionLabel={activeFilterCount > 0 ? "Reset Filters" : undefined}
+                                onAction={activeFilterCount > 0 ? resetFilters : undefined}
+                             />
+                          </div>
+                        ) : (
+                          visibleSpots.map(spot => (<SpotCard key={spot.id} spot={spot} onClick={() => setSelectedSpot(spot)} />))
+                        )}
                       </div>
-                    ) : (
-                      visibleSpots.map(spot => (<SpotCard key={spot.id} spot={spot} onClick={() => setSelectedSpot(spot)} />))
-                    )}
-                  </div>
-                  {hasMore && (<button onClick={() => setSpotLimit(prev => prev + 10)} className="w-full py-5 bg-slate-900 border border-slate-800 rounded-3xl text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400 flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors active:scale-95 shadow-xl mt-4">Show More <ChevronDown size={14} /></button>)}
-                </>
+                      {hasMore && (<button onClick={() => setSpotLimit(prev => prev + 10)} className="w-full py-5 bg-slate-900 border border-slate-800 rounded-3xl text-[9px] font-black uppercase tracking-[0.3em] text-indigo-400 flex items-center justify-center gap-2 hover:bg-slate-800 transition-colors active:scale-95 shadow-xl mt-4">Show More <ChevronDown size={14} /></button>)}
+                    </>
+                 )}
+               </>
              )}
           </div>
         ) : (
           <div className="w-full h-[60vh] md:h-[75vh] bg-slate-900 rounded-[2.5rem] border border-slate-800 relative overflow-hidden shadow-2xl animate-view z-0">
-              {!libLoaded && (<div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-50"><Loader2 className="animate-spin text-indigo-500" /></div>)}
+              {(!libLoaded || isLoading) && (<div className="absolute inset-0 flex items-center justify-center bg-slate-900 z-50"><Loader2 className="animate-spin text-indigo-500" /></div>)}
               <div ref={mapContainerRef} id="leaflet-map" className="w-full h-full z-10 bg-slate-900" style={{ touchAction: 'none' }} />
               
               <button
@@ -800,7 +659,8 @@ const SpotsView: React.FC = () => {
         <button onClick={() => setShowAddSpotForm(true)} className="w-full py-5 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-slate-900/50 transition-colors"><Plus size={16} /> Submit New Spot</button>
       </div>
       
-      {/* Filter, Spot Modal, etc. continue... */}
+      {/* ... (Modals and Filter Panel kept same) ... */}
+      
       {/* FILTER PANEL */}
       {showFilterPanel && (
         <div className="fixed inset-0 z-[160] bg-black/95 backdrop-blur-xl flex items-end justify-center">
@@ -1111,7 +971,7 @@ const SpotsView: React.FC = () => {
         </div>
       )}
 
-      {/* CREATE CHALLENGE MODAL */}
+      {/* CREATE CHALLENGE MODAL & OTHER MODALS */}
       {showCreateChallenge && (
         <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-[2rem] p-6 space-y-6 shadow-2xl animate-view">
