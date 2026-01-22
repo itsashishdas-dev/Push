@@ -12,6 +12,25 @@ import { COLLECTIBLES_DATABASE, STATE_LANDMARKS, STATE_IMAGES } from '../constan
 import { playSound } from '../utils/audio';
 import { triggerHaptic } from '../utils/haptics';
 
+// Helper functions for distance calculation
+function deg2rad(deg: number) {
+  return deg * (Math.PI/180);
+}
+
+function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2-lat1);  
+  const dLon = deg2rad(lon2-lon1); 
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ; 
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+  const d = R * c; // Distance in km
+  return d;
+}
+
 const SpotsView: React.FC = () => {
   // 1. Single Source of Truth
   const [allSpots, setAllSpots] = useState<Spot[]>([]);
@@ -284,20 +303,45 @@ const SpotsView: React.FC = () => {
     triggerHaptic('medium');
     playSound('click');
     
-    const doZoom = (lat: number, lng: number) => {
-        if (mapInstanceRef.current) {
-            mapInstanceRef.current.setView([lat, lng], 14);
-            setIsSearchingLocation(false);
+    const findNearest = (lat: number, lng: number) => {
+        // Search within filtered spots if any, otherwise all spots
+        const candidates = filteredSpots.length > 0 ? filteredSpots : allSpots;
+        
+        let nearest: Spot | null = null;
+        let minDistance = Infinity;
+
+        candidates.forEach(spot => {
+            if (spot.location.lat && spot.location.lng) {
+                const dist = getDistanceFromLatLonInKm(lat, lng, spot.location.lat, spot.location.lng);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    nearest = spot;
+                }
+            }
+        });
+
+        if (nearest && mapInstanceRef.current) {
+            const s = nearest as Spot;
+            // Fly to spot
+            mapInstanceRef.current.setView([s.location.lat, s.location.lng], 16, { animate: true });
+            // Select spot (opens modal)
+            setSelectedSpot(s);
+        } else {
+            // Fallback: just show user location if no spots found
+            if (mapInstanceRef.current) mapInstanceRef.current.setView([lat, lng], 14, { animate: true });
+            alert("No spots found nearby.");
         }
+        setIsSearchingLocation(false);
     };
 
     if (userCoords) {
-        doZoom(userCoords.lat, userCoords.lng);
+        findNearest(userCoords.lat, userCoords.lng);
     } else if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                doZoom(pos.coords.latitude, pos.coords.longitude);
+                const { latitude, longitude } = pos.coords;
+                setUserCoords({ lat: latitude, lng: longitude });
+                findNearest(latitude, longitude);
             },
             () => {
                 setIsSearchingLocation(false);
@@ -306,6 +350,7 @@ const SpotsView: React.FC = () => {
         );
     } else {
         setIsSearchingLocation(false);
+        alert("Geolocation is not supported.");
     }
   };
 
@@ -658,8 +703,6 @@ const SpotsView: React.FC = () => {
         
         <button onClick={() => setShowAddSpotForm(true)} className="w-full py-5 border-2 border-dashed border-slate-800 rounded-3xl text-slate-500 text-[9px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-slate-900/50 transition-colors"><Plus size={16} /> Submit New Spot</button>
       </div>
-      
-      {/* ... (Modals and Filter Panel kept same) ... */}
       
       {/* FILTER PANEL */}
       {showFilterPanel && (

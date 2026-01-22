@@ -58,22 +58,121 @@
         /* --- RETRO MODE OVERRIDES --- */
         .retro-mode {
             font-family: 'VT323', monospace !important;
-            --retro-green: #00ff00;
+            --retro-green: #00ff41; /* Matrix/Terminal Green */
+            --retro-dim: #008F11;
             --retro-bg: #050a05;
-            --retro-border: #008800;
+            --retro-black: #000000;
+            --retro-scan-line: rgba(0, 0, 0, 0.5);
         }
 
+        /* Global Reset for Retro Mode */
         .retro-mode * {
-            border-radius: 0px !important; /* Blocky NES style */
+            font-family: 'VT323', monospace !important;
+            border-radius: 0px !important;
+            box-shadow: none !important;
             letter-spacing: 1px;
         }
 
-        .retro-mode h1, .retro-mode h2, .retro-mode h3 {
+        /* Typography & Phosphor Bloom */
+        .retro-mode h1, .retro-mode h2, .retro-mode h3, .retro-mode h4, .retro-mode h5, .retro-mode h6 {
             text-transform: uppercase;
-            text-shadow: 2px 2px 0px #003300;
+            color: var(--retro-green) !important;
+            text-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
         }
 
-        /* Scanline Effect */
+        .retro-mode p, .retro-mode span, .retro-mode div {
+            text-shadow: 0 0 2px rgba(0, 255, 65, 0.2);
+        }
+
+        /* Backgrounds - Flatten to Black */
+        .retro-mode .bg-black,
+        .retro-mode .bg-slate-900,
+        .retro-mode .bg-slate-950,
+        .retro-mode .bg-slate-800,
+        .retro-mode .bg-gray-900 {
+            background-color: var(--retro-black) !important;
+            border: 1px solid var(--retro-dim) !important;
+        }
+
+        /* Transparencies */
+        .retro-mode .bg-slate-900\/50,
+        .retro-mode .bg-slate-900\/80, 
+        .retro-mode .backdrop-blur-md,
+        .retro-mode .backdrop-blur-xl {
+            backdrop-filter: none !important;
+            background-color: rgba(0, 20, 0, 0.95) !important;
+            border: 1px solid var(--retro-green) !important;
+        }
+
+        /* Text Color Mapping - Force Green */
+        .retro-mode .text-white,
+        .retro-mode .text-slate-100,
+        .retro-mode .text-slate-200,
+        .retro-mode .text-slate-300,
+        .retro-mode .text-indigo-400,
+        .retro-mode .text-indigo-500,
+        .retro-mode .text-amber-400,
+        .retro-mode .text-amber-500,
+        .retro-mode .text-pink-500,
+        .retro-mode .text-green-400,
+        .retro-mode .text-red-400 {
+            color: var(--retro-green) !important;
+        }
+
+        .retro-mode .text-slate-400,
+        .retro-mode .text-slate-500,
+        .retro-mode .text-slate-600 {
+            color: var(--retro-dim) !important;
+        }
+
+        /* Inputs & Forms */
+        .retro-mode input, 
+        .retro-mode textarea, 
+        .retro-mode select {
+            background-color: var(--retro-black) !important;
+            border: 2px solid var(--retro-dim) !important;
+            color: var(--retro-green) !important;
+            font-size: 1.2rem !important;
+            text-transform: uppercase;
+        }
+        
+        .retro-mode input:focus, 
+        .retro-mode textarea:focus {
+            border-color: var(--retro-green) !important;
+            outline: none !important;
+            background-color: #001100 !important;
+        }
+
+        /* Buttons & Actions */
+        .retro-mode button {
+            text-transform: uppercase !important;
+            border: 2px solid var(--retro-green) !important;
+            background-color: var(--retro-black) !important;
+            color: var(--retro-green) !important;
+        }
+
+        /* High Priority / Active Buttons (Invert) */
+        .retro-mode .bg-indigo-500,
+        .retro-mode .bg-indigo-600,
+        .retro-mode .bg-amber-500,
+        .retro-mode .bg-green-500,
+        .retro-mode .bg-red-500,
+        .retro-mode .bg-blue-600,
+        .retro-mode .bg-white {
+            background-color: var(--retro-green) !important;
+            color: var(--retro-black) !important;
+            border: 2px solid var(--retro-green) !important;
+            text-shadow: none !important;
+            font-weight: 900 !important;
+        }
+        
+        .retro-mode button:active {
+            background-color: var(--retro-green) !important;
+            color: var(--retro-black) !important;
+            transform: translate(2px, 2px);
+        }
+
+        /* Scanlines Effect */
         .scanlines {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -81,13 +180,13 @@
                 to bottom,
                 rgba(255,255,255,0),
                 rgba(255,255,255,0) 50%,
-                rgba(0,0,0,0.2) 50%,
-                rgba(0,0,0,0.2)
+                rgba(0,0,0,0.4) 50%,
+                rgba(0,0,0,0.4)
             );
             background-size: 100% 4px;
             pointer-events: none;
             z-index: 9999;
-            opacity: 0.6;
+            opacity: 0.7;
         }
 
         /* CRT Flicker */
@@ -95,48 +194,15 @@
             animation: flicker 0.15s infinite;
             position: fixed;
             inset: 0;
-            background: rgba(0, 255, 0, 0.02);
+            background: rgba(0, 255, 0, 0.03);
             pointer-events: none;
             z-index: 9998;
         }
 
         @keyframes flicker {
-            0% { opacity: 0.9; }
+            0% { opacity: 0.92; }
             50% { opacity: 1.0; }
-            100% { opacity: 0.9; }
-        }
-
-        /* Force high contrast borders in retro mode */
-        .retro-mode .border, 
-        .retro-mode .border-t, 
-        .retro-mode .border-b, 
-        .retro-mode input, 
-        .retro-mode button {
-            border-color: var(--retro-border) !important;
-            border-width: 2px !important;
-        }
-
-        .retro-mode .bg-slate-900, 
-        .retro-mode .bg-slate-950, 
-        .retro-mode .bg-black {
-            background-color: var(--retro-bg) !important;
-        }
-
-        .retro-mode .text-slate-500,
-        .retro-mode .text-slate-400 {
-            color: #00aa00 !important;
-        }
-
-        .retro-mode .text-white,
-        .retro-mode .text-slate-200 {
-            color: #00ff00 !important;
-            text-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
-        }
-        
-        .retro-mode .bg-indigo-500,
-        .retro-mode .bg-amber-500 {
-            background-color: #00aa00 !important;
-            color: black !important;
+            100% { opacity: 0.94; }
         }
     </style>
 <script type="importmap">
