@@ -191,6 +191,13 @@ export interface Booking {
   commission: number; // App fee
 }
 
+export interface SpotActivity {
+  activeVotes: number;
+  inactiveVotes: number;
+  lastSkatedAt: string | null; // ISO Date
+  confidence: 'High' | 'Medium' | 'Low';
+}
+
 export interface Spot {
   id: string;
   name: string;
@@ -214,6 +221,9 @@ export interface Spot {
   // Phase 3: Confidence & Safety Flags
   locationConfidence?: 'High' | 'Medium' | 'Low';
   verificationMethod?: string;
+  
+  // Phase 3: Community Activity
+  activity?: SpotActivity;
 
   images?: string[];
   sessions: Session[];
