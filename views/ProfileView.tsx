@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Award, Share2, Flame, LogOut, ShieldAlert, ChevronRight, UserX, Zap, Activity, Camera, Loader2, Mountain, Package, Disc, Sticker, Trophy, Crown, Check, Lock, Bell, Volume2, Shield, HelpCircle, Edit3, X, Save, Gamepad2, Instagram, Users, Search, UserPlus, Swords, MapPin, MessageCircle, Send, ArrowLeft, Circle, TrendingUp, Calendar, AlertCircle } from 'lucide-react';
+import { Settings, Award, Share2, Flame, LogOut, ShieldAlert, ChevronRight, UserX, Zap, Activity, Camera, Loader2, Mountain, Package, Disc, Sticker, Trophy, Crown, Check, Lock, Bell, Volume2, Shield, HelpCircle, Edit3, X, Save, Gamepad2, Instagram, Users, Search, UserPlus, Swords, MapPin, MessageCircle, Send, ArrowLeft, Circle, TrendingUp, Calendar, AlertCircle, ToggleRight, ToggleLeft } from 'lucide-react';
 import { User, Discipline, Collectible, CollectibleType, Rarity, FriendRequest, ChatMessage, Crew } from '../types';
 import { COLLECTIBLES_DATABASE } from '../constants';
 import { backend } from '../services/mockBackend';
@@ -206,6 +206,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
     const updated = await backend.updateUser({ ...user, retroModeEnabled: !user.retroModeEnabled });
     setUser(updated);
     if (user.soundEnabled) playSound(updated.retroModeEnabled ? 'retro_unlock' : 'click');
+  };
+
+  const toggleNotifications = async () => {
+    if (!user) return;
+    const updated = await backend.updateUser({ ...user, notificationsEnabled: !user.notificationsEnabled });
+    setUser(updated);
+    if (user.soundEnabled) playSound('click');
   };
 
   const simulateStreak = async () => {
@@ -786,16 +793,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
         </div>
       )}
 
-      {/* Settings Modal */}
+      {/* Settings Modal - Reorganized */}
       {showSettingsMenu && (
         <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-end sm:items-center justify-center p-4" onClick={() => setShowSettingsMenu(false)}>
-           <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 w-full max-w-sm space-y-6 animate-view shadow-2xl" onClick={e => e.stopPropagation()}>
+           <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 w-full max-w-sm space-y-6 animate-view shadow-2xl max-h-[90vh] overflow-y-auto hide-scrollbar" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between">
                  <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">Settings</h3>
                  <button onClick={() => setShowSettingsMenu(false)} className="p-2 -mr-2 text-slate-500"><X size={24} /></button>
               </div>
 
+              {/* Gameplay & Audio */}
               <div className="space-y-2">
+                  <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 ml-1 mb-2">Experience</h4>
+                  
                   <button onClick={toggleSound} className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between group active:scale-95 transition-transform">
                       <div className="flex items-center gap-3">
                           <div className={`p-2 rounded-lg ${user.soundEnabled ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}><Volume2 size={18} /></div>
@@ -812,10 +822,33 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
                           <span className="text-sm font-bold text-white uppercase tracking-wide">Retro Mode</span>
                       </div>
                       <div className={`w-10 h-5 rounded-full p-1 transition-colors ${user.retroModeEnabled ? 'bg-amber-500' : 'bg-slate-800'}`}>
-                          <div className={`w-3 h-3 bg-white rounded-full transition-transform ${user.retroModeEnabled ? 'translate-x-5' : ''}`} />
+                          {user.retroModeEnabled ? (
+                              <span className="text-[8px] font-black text-black block w-full text-center leading-[12px]">ON</span>
+                          ) : (
+                              <div className="w-3 h-3 bg-white rounded-full" />
+                          )}
                       </div>
                   </button>
+              </div>
+
+              {/* Preferences */}
+              <div className="space-y-2">
+                  <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 ml-1 mb-2">Preferences</h4>
                   
+                  <button onClick={toggleNotifications} className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between group active:scale-95 transition-transform">
+                      <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${user.notificationsEnabled ? 'bg-green-500 text-white' : 'bg-slate-800 text-slate-500'}`}><Bell size={18} /></div>
+                          <span className="text-sm font-bold text-white uppercase tracking-wide">Notifications</span>
+                      </div>
+                      <div className={`w-10 h-5 rounded-full p-1 transition-colors ${user.notificationsEnabled ? 'bg-green-500' : 'bg-slate-800'}`}>
+                          <div className={`w-3 h-3 bg-white rounded-full transition-transform ${user.notificationsEnabled ? 'translate-x-5' : ''}`} />
+                      </div>
+                  </button>
+              </div>
+
+              {/* Developer / Zone */}
+              <div className="space-y-2">
+                  <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 ml-1 mb-2">Zone Management</h4>
                   <button onClick={simulateStreak} className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between group active:scale-95 transition-transform">
                       <div className="flex items-center gap-3">
                           <div className="p-2 rounded-lg bg-slate-800 text-slate-500 group-hover:bg-slate-700 group-hover:text-white transition-colors"><Flame size={18} /></div>
@@ -823,21 +856,27 @@ const ProfileView: React.FC<ProfileViewProps> = ({ setActiveTab, onLogout }) => 
                       </div>
                       <ChevronRight size={18} className="text-slate-600" />
                   </button>
+                  <button onClick={toggleAdmin} className="w-full p-4 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between group active:scale-95 transition-transform">
+                      <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${user.isAdmin ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-500'}`}><ShieldAlert size={18} /></div>
+                          <span className="text-sm font-bold text-white uppercase tracking-wide">Developer Mode</span>
+                      </div>
+                      <span className="text-[10px] font-black text-slate-500 uppercase">{user.isAdmin ? 'ACTIVE' : 'OFF'}</span>
+                  </button>
               </div>
 
-              <div className="pt-4 border-t border-slate-800 space-y-2">
-                  <button onClick={toggleAdmin} className="w-full py-3 text-xs font-black uppercase tracking-widest text-slate-500 hover:text-white transition-colors">
-                      {user.isAdmin ? 'Disable' : 'Enable'} Developer Mode
-                  </button>
-                  <button onClick={onLogout} className="w-full py-4 bg-slate-800 text-slate-300 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform">
+              {/* Account */}
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                  <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600 ml-1 mb-1">Account</h4>
+                  <button onClick={onLogout} className="w-full py-4 bg-slate-800 text-slate-300 rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-700 hover:text-white">
                       <LogOut size={16} /> Sign Out
                   </button>
-                  <button onClick={handleDeleteAccount} className="w-full py-2 text-[10px] font-black uppercase tracking-widest text-red-900 hover:text-red-500 transition-colors">
-                      Delete Account
+                  <button onClick={handleDeleteAccount} className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-red-900 hover:text-red-500 transition-colors flex items-center justify-center gap-2">
+                      <UserX size={12} /> Delete Account
                   </button>
               </div>
               
-              <p className="text-center text-[8px] font-bold uppercase tracking-widest text-slate-700">PUSH v1.0.4 • Build 2024</p>
+              <p className="text-center text-[8px] font-bold uppercase tracking-widest text-slate-700">PUSH v1.0.5 • Build 2024</p>
            </div>
         </div>
       )}

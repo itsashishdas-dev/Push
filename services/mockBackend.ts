@@ -4,7 +4,7 @@ import { MOCK_SPOTS, COLLECTIBLES_DATABASE, SKILL_LIBRARY } from '../constants';
 
 const STORAGE_KEYS = {
   SPOTS: 'push_spots_data_v22_stable',
-  USER: 'push_user_data_v4', // Incremented for Crew ID
+  USER: 'push_user_data_v5', // Incremented
   AUTH: 'push_is_logged_in',
   CHATS: 'push_session_chats',
   STATE_COVERS: 'push_state_covers',
@@ -266,6 +266,7 @@ class MockBackend {
       crewId: 'crew-bombers', // Seed user into a crew for demo
       soundEnabled: true,
       retroModeEnabled: false,
+      notificationsEnabled: true, // Default enabled
       stance: 'regular',
       gender: 'Male',
       bio: 'Just pushing wood and plastic.'

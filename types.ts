@@ -110,6 +110,7 @@ export interface User {
   // User Preferences
   soundEnabled: boolean;
   retroModeEnabled: boolean;
+  notificationsEnabled: boolean; // New: Notification preference
 
   // Extended Profile
   phoneNumber?: string;

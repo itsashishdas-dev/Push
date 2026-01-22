@@ -32,6 +32,18 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
+  // Poll for user updates (simple state sync for settings like retro mode)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const interval = setInterval(async () => {
+        const u = await backend.getUser();
+        if (JSON.stringify(u) !== JSON.stringify(user)) {
+            setUser(u);
+        }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, user]);
+
   const handleLogin = async () => {
     const u = await backend.login();
     setUser(u);
@@ -71,7 +83,16 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-[100dvh] w-full bg-black text-slate-100 overflow-hidden relative">
+    <div className={`flex flex-col md:flex-row h-[100dvh] w-full bg-black text-slate-100 overflow-hidden relative ${user?.retroModeEnabled ? 'retro-mode' : ''}`}>
+      
+      {/* Retro Mode Overlay Effects */}
+      {user?.retroModeEnabled && (
+        <>
+            <div className="scanlines" />
+            <div className="crt-flicker" />
+        </>
+      )}
+
       {/* Navigation - Slides away in Admin mode */}
       <div className={`z-[100] transition-transform duration-300 ${activeTab === 'admin' ? 'translate-y-full md:-translate-x-full absolute' : 'relative'}`}>
         <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
