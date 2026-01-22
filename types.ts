@@ -210,6 +210,11 @@ export interface Spot {
   isVerified: boolean;
   verificationStatus: VerificationStatus;
   verificationNote?: string;
+  
+  // Phase 3: Confidence & Safety Flags
+  locationConfidence?: 'High' | 'Medium' | 'Low';
+  verificationMethod?: string;
+
   images?: string[];
   sessions: Session[];
   rating: number;
