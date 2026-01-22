@@ -1,10 +1,10 @@
 
-import { Spot, User, VerificationStatus, Discipline, Difficulty, Review, Collectible, CollectibleType, ChatMessage, Session, DailyNote, Challenge, Mentor, Booking, MentorBadge, ChallengeSubmission, FriendRequest, SkillState, MentorApplication } from '../types';
+import { Spot, User, VerificationStatus, Discipline, Difficulty, Review, Collectible, CollectibleType, ChatMessage, Session, DailyNote, Challenge, Mentor, Booking, MentorBadge, ChallengeSubmission, FriendRequest, SkillState, MentorApplication, Crew } from '../types';
 import { MOCK_SPOTS, COLLECTIBLES_DATABASE, SKILL_LIBRARY } from '../constants';
 
 const STORAGE_KEYS = {
-  SPOTS: 'push_spots_data_v22_stable', // Incremented version to force clean sync if needed
-  USER: 'push_user_data_v3', // Updated key for new level logic
+  SPOTS: 'push_spots_data_v22_stable',
+  USER: 'push_user_data_v4', // Incremented for Crew ID
   AUTH: 'push_is_logged_in',
   CHATS: 'push_session_chats',
   STATE_COVERS: 'push_state_covers',
@@ -13,7 +13,8 @@ const STORAGE_KEYS = {
   MENTORS: 'push_mentors_v1',
   BOOKINGS: 'push_bookings_v1',
   SUBMISSIONS: 'push_submissions_v1',
-  SKILLS: 'push_user_skills_v1'
+  SKILLS: 'push_user_skills_v1',
+  CREWS: 'push_crews_v1'
 };
 
 export interface ExtendedSession extends Session {
@@ -72,6 +73,7 @@ class MockBackend {
     localStorage.removeItem(STORAGE_KEYS.BOOKINGS);
     localStorage.removeItem(STORAGE_KEYS.SUBMISSIONS);
     localStorage.removeItem(STORAGE_KEYS.SKILLS);
+    localStorage.removeItem(STORAGE_KEYS.CREWS);
   }
 
   // --- REWARD ENGINE ---
@@ -233,8 +235,8 @@ class MockBackend {
   async getUser(): Promise<User> {
     const json = localStorage.getItem(STORAGE_KEYS.USER);
     if (json) {
-        // Migration check for old user objects without friends
         const parsed = JSON.parse(json);
+        // Migration check for old user objects without friends
         if (!parsed.friends) {
             parsed.friends = [];
             parsed.friendRequests = [];
@@ -261,6 +263,7 @@ class MockBackend {
       isMentor: false,
       friends: [],
       friendRequests: [],
+      crewId: 'crew-bombers', // Seed user into a crew for demo
       soundEnabled: true,
       retroModeEnabled: false,
       stance: 'regular',
@@ -268,6 +271,12 @@ class MockBackend {
       bio: 'Just pushing wood and plastic.'
     };
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(defaultUser));
+    
+    // Ensure default crew exists if we assigned it
+    if (defaultUser.crewId) {
+        await this.ensureDefaultCrew(defaultUser.crewId);
+    }
+    
     return defaultUser;
   }
 
@@ -360,6 +369,108 @@ class MockBackend {
       return spots[index];
     }
     throw new Error('Spot not found');
+  }
+
+  // --- CREW MANAGEMENT ---
+  private async ensureDefaultCrew(crewId: string) {
+      const json = localStorage.getItem(STORAGE_KEYS.CREWS);
+      let crews: Crew[] = json ? JSON.parse(json) : [];
+      
+      if (!crews.find(c => c.id === crewId)) {
+          const defaultCrew: Crew = {
+              id: crewId,
+              name: 'Bombay Bombers',
+              city: 'Mumbai',
+              avatar: '💣',
+              level: 4,
+              totalXp: 12500,
+              members: ['u-arjun', 'u-rahul', 'u-zoya'],
+              nextSession: {
+                  text: 'Sunday Morning @ Carter Rd',
+                  date: new Date(Date.now() + 86400000).toISOString(),
+                  author: 'Rahul V.'
+              },
+              weeklyGoal: {
+                  description: 'Log 15 sessions total',
+                  current: 12,
+                  target: 15
+              }
+          };
+          crews.push(defaultCrew);
+          localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
+      }
+  }
+
+  async getUserCrew(crewId?: string): Promise<Crew | null> {
+      if (!crewId) return null;
+      await this.delay(300);
+      const json = localStorage.getItem(STORAGE_KEYS.CREWS);
+      const crews: Crew[] = json ? JSON.parse(json) : [];
+      return crews.find(c => c.id === crewId) || null;
+  }
+
+  async createCrew(name: string, city: string): Promise<Crew> {
+      await this.delay(800);
+      const user = await this.getUser();
+      
+      const newCrew: Crew = {
+          id: `crew-${Math.random().toString(36).substr(2, 6)}`,
+          name,
+          city,
+          avatar: '🛹',
+          level: 1,
+          totalXp: 0,
+          members: [user.id],
+          weeklyGoal: {
+              description: 'Complete 3 sessions',
+              current: 0,
+              target: 3
+          }
+      };
+
+      const json = localStorage.getItem(STORAGE_KEYS.CREWS);
+      const crews: Crew[] = json ? JSON.parse(json) : [];
+      crews.push(newCrew);
+      localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
+
+      // Update user
+      const updatedUser = { ...user, crewId: newCrew.id };
+      await this.updateUser(updatedUser);
+
+      return newCrew;
+  }
+
+  async updateCrewSession(crewId: string, text: string): Promise<Crew> {
+      await this.delay(300);
+      const user = await this.getUser();
+      const json = localStorage.getItem(STORAGE_KEYS.CREWS);
+      const crews: Crew[] = json ? JSON.parse(json) : [];
+      const idx = crews.findIndex(c => c.id === crewId);
+      
+      if (idx > -1) {
+          crews[idx].nextSession = {
+              text,
+              date: new Date().toISOString(),
+              author: user.name
+          };
+          localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
+          return crews[idx];
+      }
+      throw new Error("Crew not found");
+  }
+
+  async getCrewMembers(memberIds: string[]): Promise<any[]> {
+      // In a real app this fetches user profiles. For mock, we map to our mock DB + current user
+      const currentUser = await this.getUser();
+      const allProfiles = [
+          { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar, location: currentUser.location },
+          ...MOCK_USERS_DB
+      ];
+      
+      return memberIds.map(id => {
+          const found = allProfiles.find(p => p.id === id);
+          return found || { id, name: 'Unknown Skater', avatar: '', location: 'India' };
+      });
   }
 
   // --- FRIENDS MANAGEMENT ---
@@ -658,9 +769,6 @@ class MockBackend {
     await this.delay(600);
     const currentUser = await this.getUser();
     
-    // In a real backend, we'd look up the user by ID. 
-    // Here we check if the ID matches the current user or is our mock user.
-    
     if (currentUser.id === userId && currentUser.mentorApplication) {
         if (approved) {
              const mentors = await this.getMentors();
@@ -689,7 +797,6 @@ class MockBackend {
         }
         await this.updateUser(currentUser);
     } 
-    // If it's the mock user, we just simulate success as it doesn't persist
   }
 
   async bookMentor(mentorId: string, date: string, time: string): Promise<Booking> {
@@ -769,37 +876,27 @@ class MockBackend {
 
     const storedMap = new Map(storedSpots.map(s => [s.id, s]));
     
-    // Merge Strategy: 
-    // 1. Start with MOCK_SPOTS (authoritative for static fields like location/name/id)
-    // 2. Merge in stored data for dynamic fields (sessions, reviews, rating, verification)
-    
     const mergedSpots = MOCK_SPOTS.map(mockSpot => {
       const stored = storedMap.get(mockSpot.id);
       if (stored) {
-        // If spot exists in storage, preserve user-generated dynamic fields
-        // but keep static fields from mock (fixes issue where code updates to mock spots don't appear)
         return {
-          ...mockSpot, // Take latest static data (e.g. fixed coords or name)
+          ...mockSpot, 
           sessions: stored.sessions || [], 
           reviews: stored.reviews || [],
           rating: stored.rating || mockSpot.rating, 
           isVerified: stored.isVerified,
           verificationStatus: stored.verificationStatus,
           verificationNote: stored.verificationNote,
-          // Preserve user added images if we had image upload, but for now mock images are cleaner
-          // images: stored.images || mockSpot.images 
         };
       }
       return mockSpot;
     });
 
-    // 3. Add spots that are ONLY in storage (User-created spots)
     const mockIds = new Set(MOCK_SPOTS.map(s => s.id));
     const userCreatedSpots = storedSpots.filter(s => !mockIds.has(s.id));
     
     const finalSpots = [...mergedSpots, ...userCreatedSpots];
     
-    // 4. Persist the clean merged state
     localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(finalSpots));
 
     return finalSpots;

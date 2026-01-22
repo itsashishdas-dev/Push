@@ -66,6 +66,27 @@ export interface MentorApplication {
   bio: string;
 }
 
+export interface Crew {
+  id: string;
+  name: string;
+  city: string;
+  avatar: string; // Emoji or Icon URL
+  bannerUrl?: string;
+  members: string[]; // List of User IDs
+  level: number;
+  totalXp: number;
+  nextSession?: {
+    text: string;
+    date: string;
+    author: string;
+  };
+  weeklyGoal: {
+    description: string;
+    current: number;
+    target: number;
+  };
+}
+
 export interface User {
   id: string;
   name: string;
@@ -85,6 +106,7 @@ export interface User {
   mentorApplication?: MentorApplication; // Track application status
   friends: string[]; // List of User IDs
   friendRequests: FriendRequest[];
+  crewId?: string; // New: Crew association
   // User Preferences
   soundEnabled: boolean;
   retroModeEnabled: boolean;
