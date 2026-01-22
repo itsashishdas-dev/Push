@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Discipline, SkillState, Difficulty, Skill } from '../types';
 import { SKILL_LIBRARY } from '../constants';
@@ -17,7 +18,10 @@ import {
   Zap,
   Mountain,
   Check,
-  SearchX
+  SearchX,
+  Filter,
+  PlayCircle,
+  Award
 } from 'lucide-react';
 
 // --- SUB-COMPONENTS ---
@@ -105,11 +109,13 @@ const SkillCard: React.FC<SkillCardProps> = ({ skill, isActive, onUpdateState, o
 };
 
 const SkillsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'tree' | 'ranks'>('tree');
+  const [activeTab, setActiveTab] = useState<'tree' | 'community'>('tree');
   const [loading, setLoading] = useState(true);
   const [userLevel, setUserLevel] = useState(1);
+  const [dailyRec, setDailyRec] = useState<Skill | null>(null);
   
   // -- SKILLS TREE STATE --
+  const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Discipline | 'all'>('all');
   const [activeDifficulty, setActiveDifficulty] = useState<Difficulty | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -127,18 +133,14 @@ const SkillsView: React.FC = () => {
     const user = await backend.getUser();
     setUserLevel(user.level);
     
-    // Initialize skill states from a hypothetical backend storage 
-    // (mocking this as local logic since backend.getUser returns basic info)
-    // In a real app, this would be `user.skills` map.
+    // Initialize skill states based on user progression (mock)
     const initialStates: Record<string, SkillState> = {};
     SKILL_LIBRARY.forEach(skill => {
-        // Mock: Randomly assign some states for demo if empty
         initialStates[skill.id] = SkillState.LEARNING;
     });
     
-    // Mock user progress
+    // Randomly populate some data if empty for demo
     if(user.masteredCount > 0) {
-        // Randomly master some skills
         const keys = Object.keys(initialStates);
         for(let i=0; i<user.masteredCount; i++) {
             initialStates[keys[i]] = SkillState.MASTERED;
@@ -146,6 +148,12 @@ const SkillsView: React.FC = () => {
     }
 
     setSkillStates(initialStates);
+
+    // Determine Daily Focus: First skill not mastered
+    // Priority: Learning > Beginner Unlocked
+    const focusSkill = SKILL_LIBRARY.find(s => initialStates[s.id] === SkillState.LEARNING) || SKILL_LIBRARY[0];
+    setDailyRec(focusSkill);
+
     setLoading(false);
   };
 
@@ -211,18 +219,47 @@ const SkillsView: React.FC = () => {
           Progression
         </button>
         <button 
-          onClick={() => setActiveTab('ranks')} 
-          className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'ranks' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
+          onClick={() => setActiveTab('community')} 
+          className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'community' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
         >
-          Ranks
+          Community
         </button>
       </div>
 
       {activeTab === 'tree' && (
         <div className="space-y-6 animate-view">
-           {/* Filters */}
-           <div className="space-y-3">
-              <div className="relative">
+           {/* Daily Focus Hero */}
+           {dailyRec && (
+             <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 p-6 rounded-[2.5rem] relative overflow-hidden shadow-2xl">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[60px] rounded-full" />
+                <div className="relative z-10 space-y-4">
+                   <div className="flex justify-between items-start">
+                      <div>
+                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-300 mb-1 flex items-center gap-1"><Zap size={10} fill="currentColor" /> Daily Focus</p>
+                         <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none">{dailyRec.name}</h2>
+                      </div>
+                      <div className="bg-indigo-500 text-white p-2 rounded-xl shadow-lg">
+                         <PlayCircle size={20} />
+                      </div>
+                   </div>
+                   
+                   <p className="text-xs text-indigo-100/80 font-medium max-w-[80%]">
+                      Perfect your {dailyRec.name} today. You're close to mastering the basics.
+                   </p>
+
+                   <button 
+                     onClick={() => setActiveVideo(dailyRec.tutorialUrl)}
+                     className="w-full bg-white text-indigo-900 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
+                   >
+                      Watch Tutorial
+                   </button>
+                </div>
+             </div>
+           )}
+
+           {/* Controls */}
+           <div className="flex items-center gap-2">
+              <div className="relative flex-1">
                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                  <input 
                    type="text" 
@@ -232,34 +269,43 @@ const SkillsView: React.FC = () => {
                    onChange={(e) => setSearchQuery(e.target.value)}
                  />
               </div>
-              <div className="flex gap-2">
-                 <button 
-                    onClick={() => setActiveCategory(activeCategory === Discipline.SKATE ? 'all' : Discipline.SKATE)} 
-                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${activeCategory === Discipline.SKATE ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-900 text-slate-500 border-slate-800'}`}
-                 >
-                    Street
-                 </button>
-                 <button 
-                    onClick={() => setActiveCategory(activeCategory === Discipline.DOWNHILL ? 'all' : Discipline.DOWNHILL)} 
-                    className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${activeCategory === Discipline.DOWNHILL ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-900 text-slate-500 border-slate-800'}`}
-                 >
-                    Downhill
-                 </button>
-              </div>
-              <div className="flex gap-2">
-                {[Difficulty.BEGINNER, Difficulty.INTERMEDIATE, Difficulty.ADVANCED].map(d => (
-                    <button
-                        key={d}
-                        onClick={() => setActiveDifficulty(activeDifficulty === d ? 'all' : d)}
-                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest border transition-all ${
-                            activeDifficulty === d ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-900 text-slate-600 border-slate-800'
-                        }`}
-                    >
-                        {d}
-                    </button>
-                ))}
-              </div>
+              <button 
+                onClick={() => setShowFilters(!showFilters)}
+                className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-900 text-slate-500 border-slate-800'}`}
+              >
+                 <Filter size={18} />
+              </button>
            </div>
+
+           {/* Advanced Filters (Collapsible) */}
+           {showFilters && (
+             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-3 animate-view">
+                <div className="space-y-2">
+                   <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Discipline</p>
+                   <div className="flex gap-2">
+                      <button onClick={() => setActiveCategory('all')} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border ${activeCategory === 'all' ? 'bg-white text-black border-white' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>All</button>
+                      <button onClick={() => setActiveCategory(Discipline.SKATE)} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border ${activeCategory === Discipline.SKATE ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>Street</button>
+                      <button onClick={() => setActiveCategory(Discipline.DOWNHILL)} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border ${activeCategory === Discipline.DOWNHILL ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>Downhill</button>
+                   </div>
+                </div>
+                <div className="space-y-2">
+                   <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Difficulty</p>
+                   <div className="flex gap-2">
+                      {[Difficulty.BEGINNER, Difficulty.INTERMEDIATE, Difficulty.ADVANCED].map(d => (
+                          <button
+                              key={d}
+                              onClick={() => setActiveDifficulty(activeDifficulty === d ? 'all' : d)}
+                              className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${
+                                  activeDifficulty === d ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-900 text-slate-600 border-slate-800'
+                              }`}
+                          >
+                              {d}
+                          </button>
+                      ))}
+                   </div>
+                </div>
+             </div>
+           )}
 
            {/* List */}
            {loading ? (
@@ -284,7 +330,7 @@ const SkillsView: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'ranks' && (
+      {activeTab === 'community' && (
          <LeaderboardView />
       )}
 
@@ -300,7 +346,6 @@ const SkillsView: React.FC = () => {
               </button>
               
               <div className="aspect-video">
-                 {/* Embed YouTube properly */}
                  <iframe 
                    src={activeVideo.replace('watch?v=', 'embed/')} 
                    title="Tutorial"

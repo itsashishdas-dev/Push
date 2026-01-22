@@ -4,9 +4,16 @@ import { User, Mentor, Booking, Discipline, MentorBadge, ChatMessage } from '../
 import { MENTOR_BADGE_META } from '../constants';
 import { backend } from '../services/mockBackend';
 import { askAICoach } from '../services/geminiService';
-import { Star, GraduationCap, Clock, IndianRupee, Zap, Mountain, CalendarDays, Loader2, Check, UserPlus, TrendingUp, X, Filter, Bot, Send, Brain, Upload, Lock, FileText, Video, Search, MapPin, BadgeCheck, Trophy } from 'lucide-react';
+import { Star, GraduationCap, Clock, IndianRupee, Zap, Mountain, CalendarDays, Loader2, Check, UserPlus, TrendingUp, X, Filter, Bot, Send, Brain, Upload, Lock, FileText, Video, Search, MapPin, BadgeCheck, Trophy, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
+
+const SUGGESTIONS = [
+  { icon: Sparkles, label: "Fix my Ollie", prompt: "My ollies are low and I turn slightly frontside. How do I fix this?" },
+  { icon: ShieldCheck, label: "Mental Game", prompt: "I'm scared to commit to dropping in. Give me a mental strategy." },
+  { icon: Zap, label: "Speed Wobbles", prompt: "How do I handle speed wobbles when going downhill?" },
+  { icon: Video, label: "Filming Tips", prompt: "What are the best angles for filming a skate line with a phone?" },
+];
 
 const MentorshipView: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -26,9 +33,7 @@ const MentorshipView: React.FC = () => {
 
   // AI Coach State
   const [aiInput, setAiInput] = useState('');
-  const [aiChatHistory, setAiChatHistory] = useState<{role: 'user' | 'model', text: string}[]>([
-    { role: 'model', text: "What's up! I'm Coach PUSH. Ask me anything about trick tips, spots, or gear setup. I can think deep if you have a complex question." }
-  ]);
+  const [aiChatHistory, setAiChatHistory] = useState<{role: 'user' | 'model', text: string}[]>([]);
   const [isAiThinking, setIsAiThinking] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -115,16 +120,20 @@ const MentorshipView: React.FC = () => {
     }
   };
 
-  const handleAiSend = async () => {
-    if (!aiInput.trim() || isAiThinking) return;
+  const handleAiSend = async (textOverride?: string) => {
+    const textToSend = textOverride || aiInput.trim();
+    if (!textToSend || isAiThinking) return;
     
-    const userMsg = aiInput.trim();
     setAiInput('');
-    setAiChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
+    setAiChatHistory(prev => [...prev, { role: 'user', text: textToSend }]);
     setIsAiThinking(true);
     triggerHaptic('light');
 
-    const response = await askAICoach(userMsg);
+    // Context Injection
+    const context = `Context: User is a Level ${currentUser?.level || 1} ${currentUser?.stance || 'regular'} footer. Disciplines: ${currentUser?.disciplines.join(', ')}.`;
+    const fullQuery = `${context}\n\nQuestion: ${textToSend}`;
+
+    const response = await askAICoach(fullQuery);
     
     setIsAiThinking(false);
     setAiChatHistory(prev => [...prev, { role: 'model', text: response }]);
@@ -151,12 +160,9 @@ const MentorshipView: React.FC = () => {
       result = result.filter(m => 
         m.name.toLowerCase().includes(q) || 
         m.bio.toLowerCase().includes(q)
-        // Note: Real location data would be joined here. For mock, relying on bio/name.
       );
     }
 
-    // Sort by Achievements (Rating + Sessions) to prioritize active/good mentors
-    // Heuristic: Rating (0-5) * 20 + SessionsCount
     return result.sort((a, b) => {
         const scoreA = (a.rating * 20) + a.studentsTrained;
         const scoreB = (b.rating * 20) + b.studentsTrained;
@@ -193,28 +199,61 @@ const MentorshipView: React.FC = () => {
       {/* AI COACH TAB */}
       {activeTab === 'ai-coach' && (
         <div className="flex flex-col h-[calc(100vh-220px)] bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden shadow-2xl relative">
+           
            {/* Chat Area */}
            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {aiChatHistory.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                   <div className={`max-w-[80%] p-4 rounded-2xl text-xs font-medium leading-relaxed ${
-                     msg.role === 'user' 
-                     ? 'bg-indigo-500 text-white rounded-tr-none' 
-                     : 'bg-slate-800 text-slate-300 rounded-tl-none border border-slate-700'
-                   }`}>
-                      {msg.text.split('\n').map((line, idx) => (
-                        <p key={idx} className={idx > 0 ? 'mt-2' : ''}>{line}</p>
-                      ))}
-                   </div>
-                </div>
-              ))}
-              {isAiThinking && (
-                <div className="flex justify-start animate-pulse">
-                   <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-2xl rounded-tl-none flex items-center gap-2">
-                      <Brain size={16} className="text-amber-500 animate-bounce" />
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Thinking Deeply...</span>
-                   </div>
-                </div>
+              {aiChatHistory.length === 0 ? (
+                 <div className="flex flex-col items-center justify-center h-full text-center space-y-6 px-4">
+                    <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center border border-amber-500/20 shadow-[0_0_30px_rgba(245,158,11,0.15)] animate-[pulse_3s_infinite]">
+                        <Bot size={32} className="text-amber-500" />
+                    </div>
+                    <div className="space-y-2">
+                        <h3 className="text-xl font-black italic uppercase text-white tracking-tight">Coach PUSH</h3>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest leading-relaxed max-w-xs mx-auto">
+                            I'm here to analyze your technique, suggest gear, and help you unlock new tricks.
+                        </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-sm">
+                        {SUGGESTIONS.map((s, i) => (
+                            <button 
+                                key={i}
+                                onClick={() => handleAiSend(s.prompt)}
+                                className="bg-slate-800 hover:bg-slate-700 border border-slate-700 p-4 rounded-2xl text-left transition-all active:scale-95 group"
+                            >
+                                <div className="flex items-center gap-2 mb-1">
+                                    <s.icon size={12} className="text-amber-500" />
+                                    <span className="text-[9px] font-black uppercase text-indigo-400 group-hover:text-white transition-colors">{s.label}</span>
+                                </div>
+                                <p className="text-xs text-slate-400 line-clamp-1">{s.prompt}</p>
+                            </button>
+                        ))}
+                    </div>
+                 </div>
+              ) : (
+                  <>
+                    {aiChatHistory.map((msg, i) => (
+                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] p-4 rounded-2xl text-xs font-medium leading-relaxed shadow-lg ${
+                            msg.role === 'user' 
+                            ? 'bg-indigo-600 text-white rounded-tr-none' 
+                            : 'bg-slate-800 text-slate-200 rounded-tl-none border border-slate-700'
+                        }`}>
+                            {msg.text.split('\n').map((line, idx) => (
+                                <p key={idx} className={idx > 0 ? 'mt-2' : ''}>{line}</p>
+                            ))}
+                        </div>
+                        </div>
+                    ))}
+                    {isAiThinking && (
+                        <div className="flex justify-start animate-pulse">
+                        <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-2xl rounded-tl-none flex items-center gap-2">
+                            <Brain size={16} className="text-amber-500 animate-bounce" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Analysing Technique...</span>
+                        </div>
+                        </div>
+                    )}
+                  </>
               )}
               <div ref={chatEndRef} />
            </div>
@@ -231,7 +270,7 @@ const MentorshipView: React.FC = () => {
                    className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors placeholder:text-slate-600"
                  />
                  <button 
-                   onClick={handleAiSend}
+                   onClick={() => handleAiSend()}
                    disabled={isAiThinking || !aiInput.trim()}
                    className="bg-amber-500 text-white p-3 rounded-xl disabled:opacity-50 active:scale-95 transition-transform"
                  >
@@ -246,7 +285,6 @@ const MentorshipView: React.FC = () => {
       {/* MARKETPLACE TAB */}
       {activeTab === 'find' && (
         <div className="space-y-4">
-          
           {/* Controls Panel */}
           <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-800 p-4 rounded-[2rem] space-y-3 sticky top-0 z-10 shadow-xl">
              <div className="relative">
