@@ -13,12 +13,15 @@ const FALLBACK_QUOTES = [
   "Speed checks fear."
 ];
 
+/**
+ * Uses Gemini 2.5 Flash with Google Maps grounding to find skate spots.
+ */
 export const getSpotRecommendations = async (lat: number, lng: number) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Find skateboard and longboard spots near coordinates ${lat}, ${lng} in India. Focus on known public plazas, skateparks, and downhill-friendly hills.`,
+      contents: `Find skateboard and longboard spots near coordinates ${lat}, ${lng} in India. Focus on known public plazas, skateparks, and downhill-friendly hills. Return a helpful description.`,
       config: {
         tools: [{ googleMaps: {} }],
         toolConfig: {
@@ -37,36 +40,32 @@ export const getSpotRecommendations = async (lat: number, lng: number) => {
     
     return { text, chunks };
   } catch (error) {
-    // console.error("AI Error:", error); // Suppressed for production cleanliness
-    return { text: "AI spotting is currently unavailable. Showing offline recommendations.", chunks: [] };
+    return { text: "AI spotting is currently offline. Relying on local data.", chunks: [] };
   }
 };
 
 /**
- * Fetches a motivational quote specifically for skateboarders and longboarders.
+ * Fetches a motivational quote specifically for skateboarders using Gemini 3 Flash.
  */
 export const getMotivationalQuote = async (): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    // Race the API call against a 3-second timeout to ensure app responsiveness
     const response = await Promise.race([
         ai.models.generateContent({
           model: "gemini-3-flash-preview",
-          contents: "Give me a single, short, powerful motivational quote for a skateboarder or downhill longboarder in 10 words or less. No hashtags, no quotes around it.",
+          contents: "Give me a single, short, powerful motivational quote for a skateboarder or downhill longboarder in 10 words or less. No hashtags, no quotes.",
         }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Quote Timeout")), 3000))
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
     ]) as GenerateContentResponse;
 
     return response.text?.trim() || "Stay stoked, keep pushing.";
   } catch (error) {
-    // Return a random fallback quote if quota is exceeded or times out
     return FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
   }
 };
 
 /**
- * Searches for places in India using Google Maps grounding via Gemini.
- * Returns a list of place names and addresses.
+ * Searches for places in India using Google Maps grounding.
  */
 export const searchPlaces = async (query: string) => {
   if (!query || query.length < 3) return [];
@@ -74,7 +73,7 @@ export const searchPlaces = async (query: string) => {
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `List 5 specific locations or street addresses in India matching "${query}" that would be relevant for skateboarding or longboarding spots. Return as a clean list of place names with their area and city.`,
+      contents: `List 5 specific locations or street addresses in India matching "${query}" relevant for skateboarding. Return as a clean list.`,
       config: {
         tools: [{ googleMaps: {} }],
       },
@@ -96,17 +95,19 @@ export const searchPlaces = async (query: string) => {
       .map(line => ({ title: line.replace(/^\d+\.\s*/, '').trim(), uri: '' }));
       
   } catch (error) {
-    // Return empty list on error to prevent UI breakage
     return [];
   }
 };
 
+/**
+ * Suggests skills to learn using Structured JSON output.
+ */
 export const suggestSkills = async (currentLevel: string, discipline: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `As an expert skate coach, suggest 3 ${discipline} skills to learn next for someone at ${currentLevel} level. Format as JSON list.`,
+      contents: `As an expert skate coach, suggest 3 ${discipline} skills to learn next for someone at ${currentLevel} level.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -117,7 +118,8 @@ export const suggestSkills = async (currentLevel: string, discipline: string) =>
               name: { type: Type.STRING },
               description: { type: Type.STRING },
               tutorialSearch: { type: Type.STRING }
-            }
+            },
+            required: ["name", "description"]
           }
         }
       }
@@ -126,48 +128,22 @@ export const suggestSkills = async (currentLevel: string, discipline: string) =>
     if (!text) return [];
     return JSON.parse(text) as any[];
   } catch (error) {
-    // console.error("AI Error:", error);
     return [];
   }
 };
 
 /**
- * Generates a cinematic, high-quality cover image for a state card.
+ * Generates a cinematic, high-quality cover image using Gemini 2.5 Flash Image.
  */
 export const generateStateCover = async (stateName: string, landmark: string): Promise<string | null> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    const prompt = `Create a clean, modern spot card background image for a skateboarding & downhill skating app.
-State: ${stateName}
-Iconic Place / Visual Identity: ${landmark}
-
-Visual Style
-• Cinematic, minimal, premium look
-• Slightly moody lighting with natural colors
-• No clutter, no crowds, no text, no logos
-• Soft depth of field so UI text remains readable
-• Feels adventurous, free, and youth-oriented
-
-Composition
-• Portrait orientation (9:16)
-• Landmark placed slightly off-center
-• Empty foreground or sky/road/water area for UI overlay
-• Subtle motion or wind if applicable
-
-Render in high resolution, realistic photography style.`;
+    const prompt = `Realistic, minimal photography of a skate spot in ${stateName}, featuring ${landmark}. Cinematic lighting, portrait orientation.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { text: prompt }
-        ]
-      },
-      config: {
-        imageConfig: {
-          aspectRatio: "9:16",
-        }
-      }
+      contents: { parts: [{ text: prompt }] },
+      config: { imageConfig: { aspectRatio: "9:16" } }
     });
 
     for (const part of response.candidates[0].content.parts) {
@@ -177,30 +153,19 @@ Render in high resolution, realistic photography style.`;
     }
     return null;
   } catch (error) {
-    console.error("Image Generation Failed:", error);
     return null;
   }
 };
 
 /**
- * Handles complex coaching queries using Thinking Mode.
+ * Handles complex coaching queries using Thinking Mode with Gemini 3 Pro.
  */
 export const askAICoach = async (query: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: `You are 'Coach PUSH', an expert AI skateboarding and downhill longboarding coach for the PUSH app in India. 
-      Your goal is to help skaters progress safely, find spots, and understand technique.
-      
-      User Query: ${query}
-      
-      Provide a highly detailed, thoughtful, and encouraging response. 
-      If the user asks about a trick, break it down step-by-step.
-      If the user asks about gear, explain the nuances.
-      If the user asks about mental blocks, be supportive.
-      
-      Keep the tone stoked but professional.`,
+      contents: `You are 'Coach PUSH', an expert AI skate coach in India. User Query: ${query}`,
       config: {
         thinkingConfig: {
           thinkingBudget: 32768
@@ -208,9 +173,8 @@ export const askAICoach = async (query: string) => {
       }
     });
     
-    return response.text || "I couldn't quite land that thought. Try asking again!";
+    return response.text || "I'm buffering on that trick. Try again!";
   } catch (error) {
-    console.error("AI Coach Error:", error);
-    return "I'm having trouble connecting to the skate network right now. Please try again later.";
+    return "The skate network is busy. Keep pushing and try later!";
   }
 };

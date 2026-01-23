@@ -25,7 +25,6 @@ export enum VerificationStatus {
 
 export enum CollectibleType {
   DECK = 'deck',
-  WHEEL = 'wheel',
   STICKER = 'sticker',
   TROPHY = 'trophy'
 }
@@ -37,6 +36,11 @@ export enum Rarity {
   LEGENDARY = 'legendary'
 }
 
+export enum MentorBadge {
+  CERTIFIED = 'certified',
+  EXPERT = 'expert'
+}
+
 export interface Collectible {
   id: string;
   name: string;
@@ -44,47 +48,63 @@ export interface Collectible {
   rarity: Rarity;
   imageUrl: string;
   description: string;
-  unlockCondition?: string; // Text description of how to get it
 }
 
 export interface FriendRequest {
   id: string;
   fromUserId: string;
   fromUserName: string;
-  fromUserAvatar: string;
   status: 'pending' | 'accepted' | 'rejected';
-  timestamp: string;
-}
-
-export interface MentorApplication {
-  status: 'pending' | 'approved' | 'rejected';
-  date: string;
-  experience: string;
-  videoUrl: string;
-  style: string;
-  rate: number;
-  bio: string;
 }
 
 export interface Crew {
   id: string;
   name: string;
   city: string;
-  avatar: string; // Emoji or Icon URL
-  bannerUrl?: string;
-  members: string[]; // List of User IDs
+  avatar: string;
+  members: string[];
   level: number;
   totalXp: number;
-  nextSession?: {
-    text: string;
-    date: string;
-    author: string;
-  };
   weeklyGoal: {
     description: string;
     current: number;
     target: number;
   };
+  nextSession?: {
+    text: string;
+    date: string;
+    author: string;
+  };
+}
+
+export interface MentorApplication {
+  experience: string;
+  style: string;
+  rate: number;
+  videoUrl: string;
+}
+
+export interface Booking {
+  id: string;
+  mentorId: string;
+  studentId: string;
+  studentName: string;
+  date: string;
+  time: string;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  amount: number;
+  commission: number;
+}
+
+export interface ChallengeSubmission {
+  id: string;
+  challengeId: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  videoUrl: string;
+  thumbnailUrl: string;
+  date: string;
 }
 
 export interface User {
@@ -99,27 +119,45 @@ export interface User {
   isAdmin: boolean;
   onboardingComplete: boolean;
   avatar?: string;
-  locker: string[]; // Array of Collectible IDs
-  equippedDeckId?: string;
-  completedChallengeIds: string[]; // New: Track completed challenges
-  isMentor: boolean; // New: Mentor Status
-  mentorApplication?: MentorApplication; // Track application status
-  friends: string[]; // List of User IDs
+  locker: string[];
+  completedChallengeIds: string[];
+  isMentor: boolean;
+  friends: string[];
   friendRequests: FriendRequest[];
-  crewId?: string; // New: Crew association
-  // User Preferences
+  crewId?: string;
   soundEnabled: boolean;
   retroModeEnabled: boolean;
-  notificationsEnabled: boolean; // New: Notification preference
-
-  // Extended Profile
+  notificationsEnabled: boolean;
+  stance?: 'regular' | 'goofy';
+  bio?: string;
   phoneNumber?: string;
   address?: string;
   gender?: string;
   dateOfBirth?: string;
   instagramHandle?: string;
-  bio?: string;
-  stance?: 'regular' | 'goofy';
+  equippedDeckId?: string;
+}
+
+export interface Spot {
+  id: string;
+  name: string;
+  type: Discipline;
+  difficulty: Difficulty;
+  state: string;
+  surface: string;
+  location: {
+    lat: number;
+    lng: number;
+    address: string;
+  };
+  notes: string;
+  isVerified: boolean;
+  verificationStatus: VerificationStatus;
+  images?: string[];
+  sessions: any[];
+  rating: number;
+  reviews?: Review[];
+  verificationNote?: string;
 }
 
 export interface Review {
@@ -129,15 +167,19 @@ export interface Review {
   rating: number;
   text: string;
   date: string;
-  userDeckId?: string; // To show deck icon in reviews
 }
 
-export interface DailyNote {
+export interface ExtendedSession {
   id: string;
   userId: string;
-  date: string; // YYYY-MM-DD
-  text: string;
-  timestamp: string;
+  userName: string;
+  title: string;
+  date: string;
+  time: string;
+  spotId: string;
+  spotName: string;
+  spotType: Discipline;
+  participants: string[];
 }
 
 export interface Challenge {
@@ -152,105 +194,19 @@ export interface Challenge {
   completions: number;
 }
 
-export interface ChallengeSubmission {
-  id: string;
-  challengeId: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  date: string;
-}
-
-export type MentorBadge = 'VERIFIED_PRO' | 'RISING_STAR' | 'TOP_RATED' | 'COMMUNITY_FAV' | 'VETERAN';
-
 export interface Mentor {
   id: string;
   userId: string;
   name: string;
   avatar: string;
   disciplines: Discipline[];
-  rate: number; // Price per session in INR
+  rate: number;
   bio: string;
   rating: number;
   reviewCount: number;
-  earnings: number; // Total earnings
+  earnings: number;
   studentsTrained: number;
   badges: MentorBadge[];
-}
-
-export interface Booking {
-  id: string;
-  mentorId: string;
-  studentId: string;
-  studentName: string;
-  date: string; // YYYY-MM-DD
-  time: string;
-  status: 'pending' | 'confirmed' | 'completed';
-  amount: number;
-  commission: number; // App fee
-}
-
-export interface SpotActivity {
-  activeVotes: number;
-  inactiveVotes: number;
-  lastSkatedAt: string | null; // ISO Date
-  confidence: 'High' | 'Medium' | 'Low';
-}
-
-export interface Spot {
-  id: string;
-  name: string;
-  type: Discipline;
-  difficulty: Difficulty;
-  state: string;
-  location: {
-    lat: number;
-    lng: number;
-    address: string;
-  };
-  notes: string;
-  // Indexed Fields from Phase 5
-  surface?: string; 
-  risk?: string;
-  
-  isVerified: boolean;
-  verificationStatus: VerificationStatus;
-  verificationNote?: string;
-  
-  // Phase 3: Confidence & Safety Flags
-  locationConfidence?: 'High' | 'Medium' | 'Low';
-  verificationMethod?: string;
-  
-  // Phase 3: Community Activity
-  activity?: SpotActivity;
-
-  images?: string[];
-  sessions: Session[];
-  rating: number;
-  reviews?: Review[];
-}
-
-export interface Session {
-  id: string;
-  userId: string; // Acts as Host ID
-  userName: string;
-  title: string;
-  date: string;
-  time: string;
-  note: string;
-  attendees: string[];
-}
-
-export interface ChatMessage {
-  id: string;
-  sessionId: string;
-  userId: string;
-  userName: string;
-  text: string;
-  timestamp: string; // ISO string or time string
-  isSystem?: boolean;
 }
 
 export interface Skill {
@@ -259,17 +215,25 @@ export interface Skill {
   category: Discipline;
   difficulty: Difficulty;
   state: SkillState;
-  videoUrl?: string;
   tutorialUrl: string;
-  unlockableCollectibleId?: string;
+  prerequisiteId?: string;
+  isCustom?: boolean;
 }
 
-export interface CommunityVideo {
+export interface ChatMessage {
   id: string;
+  sessionId: string;
+  userId: string;
   userName: string;
-  discipline: Discipline;
-  spotName?: string;
-  videoUrl: string;
-  thumbnailUrl: string;
-  length: number;
+  text: string;
+  timestamp: string;
+  isSystem?: boolean;
+}
+
+export interface DailyNote {
+  id: string;
+  userId: string;
+  date: string;
+  text: string;
+  timestamp: string;
 }

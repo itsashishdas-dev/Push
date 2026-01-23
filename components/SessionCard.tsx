@@ -1,8 +1,7 @@
 
 import React from 'react';
 import { Calendar, Clock, MapPin, Check, UserPlus } from 'lucide-react';
-import { ExtendedSession } from '../services/mockBackend';
-import { Discipline } from '../types';
+import { ExtendedSession, Discipline } from '../types';
 
 interface SessionCardProps {
   session: ExtendedSession;

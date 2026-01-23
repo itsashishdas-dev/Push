@@ -1,12 +1,12 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Discipline, SkillState, Difficulty, Skill } from '../types';
-import { SKILL_LIBRARY } from '../constants';
-import { backend } from '../services/mockBackend';
-import { triggerHaptic } from '../utils/haptics';
-import { playSound } from '../utils/audio';
-import { SkillCardSkeleton, EmptyState } from '../components/States';
-import LeaderboardView from './LeaderboardView';
+import * as React from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { Discipline, SkillState, Difficulty, Skill, User } from '../types.ts';
+import { SKILL_LIBRARY } from '../constants.tsx';
+import { backend } from '../services/mockBackend.ts';
+import { triggerHaptic } from '../utils/haptics.ts';
+import { playSound } from '../utils/audio.ts';
+import { SkillCardSkeleton, EmptyState } from '../components/States.tsx';
 import { 
   Youtube, 
   X, 
@@ -21,108 +21,119 @@ import {
   SearchX,
   Filter,
   PlayCircle,
-  Award
+  Lock,
+  Plus,
+  Sparkles,
+  Award,
+  ChevronRight
 } from 'lucide-react';
-
-// --- SUB-COMPONENTS ---
 
 const DifficultyIcon: React.FC<{ difficulty: Difficulty, size?: number }> = ({ difficulty, size = 12 }) => {
   switch (difficulty) {
-    case Difficulty.BEGINNER:
-      return <Circle size={size} className="text-green-500" />;
-    case Difficulty.INTERMEDIATE:
-      return <Square size={size} className="text-amber-500" />;
-    case Difficulty.ADVANCED:
-      return <Triangle size={size} className="text-red-500 fill-current" />;
-    default:
-      return <Circle size={size} className="text-slate-500" />;
+    case Difficulty.BEGINNER: return <Circle size={size} className="text-green-500" />;
+    case Difficulty.INTERMEDIATE: return <Square size={size} className="text-amber-500" />;
+    case Difficulty.ADVANCED: return <Triangle size={size} className="text-red-500 fill-current" />;
+    default: return <Circle size={size} className="text-slate-500" />;
   }
 };
 
 interface SkillCardProps {
-  skill: Skill & { state: SkillState };
-  isActive: boolean;
+  skill: Skill;
+  isLocked: boolean;
+  isJustUnlocked: boolean;
   onUpdateState: (id: string, state: SkillState) => void;
   onWatchTutorial: (url: string) => void;
 }
 
-const SkillCard: React.FC<SkillCardProps> = ({ skill, isActive, onUpdateState, onWatchTutorial }) => {
+const SkillCard: React.FC<SkillCardProps> = ({ skill, isLocked, isJustUnlocked, onUpdateState, onWatchTutorial }) => {
   const isSkate = skill.category === Discipline.SKATE;
-  
+  const isMastered = skill.state === SkillState.MASTERED;
+
   return (
-    <div className={`bg-slate-900 border ${isActive ? 'border-indigo-500 shadow-indigo-500/10 shadow-lg' : 'border-slate-800'} rounded-[2rem] p-5 relative overflow-hidden group transition-all duration-300 hover:border-slate-700`}>
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-             <DifficultyIcon difficulty={skill.difficulty} size={10} />
-             <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded tracking-widest border ${
-               skill.difficulty === Difficulty.ADVANCED ? 'border-red-500/30 text-red-400' :
-               skill.difficulty === Difficulty.INTERMEDIATE ? 'border-amber-500/30 text-amber-400' : 'border-green-500/30 text-green-400'
-             }`}>{skill.difficulty}</span>
+    <div className={`relative transition-all duration-500 ${isLocked ? 'opacity-50 grayscale' : 'opacity-100'} ${isJustUnlocked ? 'ring-4 ring-indigo-500 animate-pulse' : ''}`}>
+      <div className={`bg-slate-900 border ${isMastered ? 'border-amber-500 shadow-amber-500/10' : 'border-slate-800'} rounded-[2rem] p-5 relative overflow-hidden group`}>
+        <div className="flex justify-between items-start mb-4 relative z-10">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+               <DifficultyIcon difficulty={skill.difficulty} size={10} />
+               <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded tracking-widest border ${
+                 skill.difficulty === Difficulty.ADVANCED ? 'border-red-500/30 text-red-400' :
+                 skill.difficulty === Difficulty.INTERMEDIATE ? 'border-amber-500/30 text-amber-400' : 'border-green-500/30 text-green-400'
+               }`}>{skill.difficulty}</span>
+               {skill.isCustom && <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[7px] font-black uppercase px-1.5 py-0.5 rounded">Custom</span>}
+            </div>
+            <h3 className="text-lg font-black uppercase italic tracking-tight text-white leading-none">{skill.name}</h3>
           </div>
-          <h3 className="text-lg font-black uppercase italic tracking-tight text-white leading-none">{skill.name}</h3>
+          
+          {isMastered && (
+             <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-black shadow-lg">
+                <Trophy size={14} fill="currentColor" />
+             </div>
+          )}
+        </div>
+
+        <div className="space-y-3 relative z-10">
+           <div className={`flex bg-slate-950 rounded-xl p-1 border border-slate-800 ${isLocked ? 'pointer-events-none' : ''}`}>
+              {[SkillState.LEARNING, SkillState.LANDED, SkillState.MASTERED].map((s) => {
+                 const active = skill.state === s;
+                 let activeColor = 'bg-slate-700 text-white';
+                 if (s === SkillState.LEARNING) activeColor = 'bg-blue-600 text-white';
+                 if (s === SkillState.LANDED) activeColor = 'bg-green-600 text-white';
+                 if (s === SkillState.MASTERED) activeColor = 'bg-amber-500 text-black';
+
+                 return (
+                    <button
+                      key={s}
+                      onClick={() => onUpdateState(skill.id, s)}
+                      className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${active ? activeColor : 'text-slate-600'}`}
+                    >
+                      {s.charAt(0).toUpperCase() + s.slice(1, 4)}
+                    </button>
+                 )
+              })}
+           </div>
+
+           {skill.tutorialUrl && !isLocked && (
+              <button 
+                onClick={() => onWatchTutorial(skill.tutorialUrl)}
+                className="w-full flex items-center justify-center gap-2 py-3 border border-slate-800 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400"
+              >
+                 <Youtube size={14} className="text-red-500" /> Tutorial
+              </button>
+           )}
         </div>
         
-        {skill.state === SkillState.MASTERED && (
-           <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-black shadow-lg shadow-amber-500/20">
-              <Trophy size={14} fill="currentColor" />
-           </div>
+        {isLocked && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
+                <Lock size={24} className="text-slate-500" />
+            </div>
         )}
+        
+        <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-5 pointer-events-none -mr-10 -mt-10 ${isSkate ? 'bg-indigo-500' : 'bg-amber-500'}`} />
       </div>
-
-      <div className="space-y-3 relative z-10">
-         {/* Status Toggle */}
-         <div className="flex bg-slate-950 rounded-xl p-1 border border-slate-800">
-            {[SkillState.LEARNING, SkillState.LANDED, SkillState.MASTERED].map((s) => {
-               const active = skill.state === s;
-               let activeColor = 'bg-slate-700 text-white';
-               if (s === SkillState.LEARNING) activeColor = 'bg-blue-600 text-white';
-               if (s === SkillState.LANDED) activeColor = 'bg-green-600 text-white';
-               if (s === SkillState.MASTERED) activeColor = 'bg-amber-500 text-black';
-
-               return (
-                  <button
-                    key={s}
-                    onClick={() => onUpdateState(skill.id, s)}
-                    className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${active ? activeColor : 'text-slate-600 hover:text-slate-400'}`}
-                  >
-                    {s === SkillState.LEARNING ? 'Learn' : s === SkillState.LANDED ? 'Landed' : 'Mastered'}
-                  </button>
-               )
-            })}
-         </div>
-
-         {skill.tutorialUrl && (
-            <button 
-              onClick={() => onWatchTutorial(skill.tutorialUrl)}
-              className="w-full flex items-center justify-center gap-2 py-3 border border-slate-800 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-800 hover:text-white transition-colors group/btn"
-            >
-               <Youtube size={14} className="text-red-500 group-hover/btn:scale-110 transition-transform" /> Watch Tutorial
-            </button>
-         )}
-      </div>
-      
-      {/* Decorative BG */}
-      <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[60px] opacity-5 pointer-events-none -mr-10 -mt-10 ${isSkate ? 'bg-indigo-500' : 'bg-amber-500'}`} />
     </div>
   );
 };
 
 const SkillsView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'tree' | 'community'>('tree');
   const [loading, setLoading] = useState(true);
-  const [userLevel, setUserLevel] = useState(1);
-  const [dailyRec, setDailyRec] = useState<Skill | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [customSkills, setCustomSkills] = useState<Skill[]>([]);
+  const [skillStates, setSkillStates] = useState<Record<string, SkillState>>({});
   
-  // -- SKILLS TREE STATE --
-  const [showFilters, setShowFilters] = useState(false);
   const [activeCategory, setActiveCategory] = useState<Discipline | 'all'>('all');
-  const [activeDifficulty, setActiveDifficulty] = useState<Difficulty | 'all'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Map of skill ID to user's state (learning/landed/mastered)
-  const [skillStates, setSkillStates] = useState<Record<string, SkillState>>({});
-  const [activeVideo, setActiveVideo] = useState<string | null>(null);
+  // Modals
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [newlyUnlocked, setNewlyUnlocked] = useState<Skill | null>(null);
+  const [masteredSkill, setMasteredSkill] = useState<Skill | null>(null);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [justUnlockedId, setJustUnlockedId] = useState<string | null>(null);
+
+  // Custom Form
+  const [customName, setCustomName] = useState('');
+  const [customCat, setCustomCat] = useState(Discipline.SKATE);
 
   useEffect(() => {
     loadData();
@@ -130,230 +141,178 @@ const SkillsView: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const user = await backend.getUser();
-    setUserLevel(user.level);
+    const [u, cs] = await Promise.all([backend.getUser(), backend.getCustomSkills()]);
+    setUser(u);
+    setCustomSkills(cs);
     
-    // Initialize skill states based on user progression (mock)
-    const initialStates: Record<string, SkillState> = {};
-    SKILL_LIBRARY.forEach(skill => {
-        initialStates[skill.id] = SkillState.LEARNING;
+    const states: Record<string, SkillState> = {};
+    SKILL_LIBRARY.forEach(s => {
+        states[s.id] = u.locker.includes(s.id) ? SkillState.MASTERED : SkillState.LEARNING;
     });
-    
-    // Randomly populate some data if empty for demo
-    if(user.masteredCount > 0) {
-        const keys = Object.keys(initialStates);
-        for(let i=0; i<user.masteredCount; i++) {
-            initialStates[keys[i]] = SkillState.MASTERED;
-        }
-    }
-
-    setSkillStates(initialStates);
-
-    // Determine Daily Focus: First skill not mastered
-    // Priority: Learning > Beginner Unlocked
-    const focusSkill = SKILL_LIBRARY.find(s => initialStates[s.id] === SkillState.LEARNING) || SKILL_LIBRARY[0];
-    setDailyRec(focusSkill);
-
+    cs.forEach(s => {
+        states[s.id] = SkillState.LEARNING; // Simplification: customs start at learning
+    });
+    setSkillStates(states);
     setLoading(false);
   };
 
   const handleUpdateState = async (skillId: string, newState: SkillState) => {
+    if (!user) return;
     triggerHaptic('medium');
-    playSound(newState === SkillState.MASTERED ? 'unlock' : 'click');
+    playSound(newState === SkillState.MASTERED ? 'success' : 'click');
     
     setSkillStates(prev => ({ ...prev, [skillId]: newState }));
-    
-    // Update backend
     await backend.updateSkillState(skillId, newState);
     
     if (newState === SkillState.MASTERED) {
-       await backend.masterSkill(skillId);
+       const updatedUser = await backend.masterSkill(skillId);
+       setUser(updatedUser);
+       
+       const justMastered = SKILL_LIBRARY.find(s => s.id === skillId);
+       const nextInTree = SKILL_LIBRARY.find(s => s.prerequisiteId === skillId);
+       
+       if (nextInTree) {
+           setNewlyUnlocked(nextInTree);
+           setJustUnlockedId(nextInTree.id);
+           setTimeout(() => setJustUnlockedId(null), 5000); // Highlight for 5s
+       }
+       setMasteredSkill(justMastered || null);
+       setShowCelebration(true);
     }
   };
 
+  const handleCreateCustom = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!customName.trim()) return;
+      setLoading(true);
+      const newSkill = await backend.saveCustomSkill({
+          name: customName,
+          category: customCat,
+          difficulty: Difficulty.BEGINNER,
+          tutorialUrl: ''
+      });
+      setCustomSkills(prev => [...prev, newSkill]);
+      setSkillStates(prev => ({ ...prev, [newSkill.id]: SkillState.LEARNING }));
+      setCustomName('');
+      setShowCustomModal(false);
+      setLoading(false);
+      triggerHaptic('success');
+  };
+
   const filteredSkills = useMemo(() => {
-    let skills = SKILL_LIBRARY;
-
-    if (activeCategory !== 'all') {
-      skills = skills.filter(s => s.category === activeCategory);
-    }
-
-    if (activeDifficulty !== 'all') {
-      skills = skills.filter(s => s.difficulty === activeDifficulty);
-    }
-
-    if (searchQuery.trim()) {
-      skills = skills.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
-    }
-
-    // Map current state
-    return skills.map(s => ({
+    let combined = [...SKILL_LIBRARY, ...customSkills];
+    if (activeCategory !== 'all') combined = combined.filter(s => s.category === activeCategory);
+    if (searchQuery.trim()) combined = combined.filter(s => s.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return combined.map(s => ({
       ...s,
       state: skillStates[s.id] || SkillState.LEARNING
     }));
-  }, [activeCategory, activeDifficulty, searchQuery, skillStates]);
+  }, [activeCategory, searchQuery, skillStates, customSkills]);
 
-  const masteredCount = Object.values(skillStates).filter(s => s === SkillState.MASTERED).length;
+  const masteredCount = user?.masteredCount || 0;
 
   return (
     <div className="pb-32 pt-6 md:pb-10 space-y-6 px-4 animate-view relative min-h-full">
       <header className="flex justify-between items-end mb-4">
         <div>
-          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Skills</h1>
-          <p className="text-slate-500 text-[9px] font-black tracking-[0.2em] uppercase">
-             Build Your Bag
-          </p>
+          <h1 className="text-3xl font-black italic uppercase tracking-tighter text-white">Tree</h1>
+          <p className="text-slate-500 text-[9px] font-black tracking-[0.2em] uppercase">Progression System</p>
         </div>
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
-           <Trophy size={16} className="text-indigo-500" />
+           <Trophy size={16} className="text-amber-500" />
            <span className="text-xs font-black text-white">{masteredCount} Mastered</span>
         </div>
       </header>
 
-      {/* TABS */}
       <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-        <button 
-          onClick={() => setActiveTab('tree')} 
-          className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'tree' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}
-        >
-          Progression
-        </button>
-        <button 
-          onClick={() => setActiveTab('community')} 
-          className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'community' ? 'bg-amber-500 text-white' : 'text-slate-500'}`}
-        >
-          Community
-        </button>
+        <button onClick={() => setActiveCategory('all')} className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeCategory === 'all' ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}>Global</button>
+        <button onClick={() => setActiveCategory(Discipline.SKATE)} className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeCategory === Discipline.SKATE ? 'bg-indigo-500 text-white' : 'text-slate-500'}`}>Street</button>
+        <button onClick={() => setActiveCategory(Discipline.DOWNHILL)} className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeCategory === Discipline.DOWNHILL ? 'bg-amber-500 text-white' : 'text-slate-500'}`}>Hill</button>
       </div>
 
-      {activeTab === 'tree' && (
-        <div className="space-y-6 animate-view">
-           {/* Daily Focus Hero */}
-           {dailyRec && (
-             <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 p-6 rounded-[2.5rem] relative overflow-hidden shadow-2xl">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/20 blur-[60px] rounded-full" />
-                <div className="relative z-10 space-y-4">
-                   <div className="flex justify-between items-start">
-                      <div>
-                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-300 mb-1 flex items-center gap-1"><Zap size={10} fill="currentColor" /> Daily Focus</p>
-                         <h2 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-none">{dailyRec.name}</h2>
-                      </div>
-                      <div className="bg-indigo-500 text-white p-2 rounded-xl shadow-lg">
-                         <PlayCircle size={20} />
-                      </div>
-                   </div>
-                   
-                   <p className="text-xs text-indigo-100/80 font-medium max-w-[80%]">
-                      Perfect your {dailyRec.name} today. You're close to mastering the basics.
-                   </p>
+      <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+             <input type="text" placeholder="Search progression..." className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-12 text-sm text-white focus:outline-none" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          </div>
+          <button onClick={() => setShowCustomModal(true)} className="p-3 bg-indigo-500 text-white rounded-xl shadow-lg active:scale-95"><Plus size={20} /></button>
+      </div>
 
-                   <button 
-                     onClick={() => setActiveVideo(dailyRec.tutorialUrl)}
-                     className="w-full bg-white text-indigo-900 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-transform"
-                   >
-                      Watch Tutorial
-                   </button>
-                </div>
-             </div>
-           )}
-
-           {/* Controls */}
-           <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
-                 <input 
-                   type="text" 
-                   placeholder="Find a trick..."
-                   className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-12 pr-4 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors placeholder:text-slate-600 font-medium"
-                   value={searchQuery}
-                   onChange={(e) => setSearchQuery(e.target.value)}
-                 />
-              </div>
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className={`p-3 rounded-xl border transition-all ${showFilters ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-900 text-slate-500 border-slate-800'}`}
-              >
-                 <Filter size={18} />
-              </button>
-           </div>
-
-           {/* Advanced Filters (Collapsible) */}
-           {showFilters && (
-             <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800 space-y-3 animate-view">
-                <div className="space-y-2">
-                   <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Discipline</p>
-                   <div className="flex gap-2">
-                      <button onClick={() => setActiveCategory('all')} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border ${activeCategory === 'all' ? 'bg-white text-black border-white' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>All</button>
-                      <button onClick={() => setActiveCategory(Discipline.SKATE)} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border ${activeCategory === Discipline.SKATE ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>Street</button>
-                      <button onClick={() => setActiveCategory(Discipline.DOWNHILL)} className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border ${activeCategory === Discipline.DOWNHILL ? 'bg-amber-500 text-white border-amber-500' : 'bg-slate-800 text-slate-500 border-slate-700'}`}>Downhill</button>
-                   </div>
-                </div>
-                <div className="space-y-2">
-                   <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Difficulty</p>
-                   <div className="flex gap-2">
-                      {[Difficulty.BEGINNER, Difficulty.INTERMEDIATE, Difficulty.ADVANCED].map(d => (
-                          <button
-                              key={d}
-                              onClick={() => setActiveDifficulty(activeDifficulty === d ? 'all' : d)}
-                              className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest border transition-all ${
-                                  activeDifficulty === d ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-900 text-slate-600 border-slate-800'
-                              }`}
-                          >
-                              {d}
-                          </button>
-                      ))}
-                   </div>
-                </div>
-             </div>
-           )}
-
-           {/* List */}
-           {loading ? (
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {[...Array(4)].map((_, i) => <SkillCardSkeleton key={i} />)}
-             </div>
-           ) : filteredSkills.length === 0 ? (
-             <EmptyState icon={SearchX} title="No Tricks Found" description="Try adjusting your filters." />
-           ) : (
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredSkills.map(skill => (
-                   <SkillCard 
-                     key={skill.id}
-                     skill={skill}
-                     isActive={false}
-                     onUpdateState={handleUpdateState}
-                     onWatchTutorial={(url) => setActiveVideo(url)}
-                   />
-                ))}
-             </div>
-           )}
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[...Array(4)].map((_, i) => <SkillCardSkeleton key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+           {filteredSkills.map(skill => {
+             const isLocked = skill.prerequisiteId ? (skillStates[skill.prerequisiteId] !== SkillState.MASTERED) : false;
+             return (
+                <SkillCard 
+                  key={skill.id}
+                  skill={skill}
+                  isLocked={isLocked}
+                  isJustUnlocked={justUnlockedId === skill.id}
+                  onUpdateState={handleUpdateState}
+                  onWatchTutorial={(url) => window.open(url, '_blank')}
+                />
+             );
+           })}
         </div>
       )}
 
-      {activeTab === 'community' && (
-         <LeaderboardView />
+      {/* Celebration Modal */}
+      {showCelebration && (
+        <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-6 animate-view">
+           <div className="flex flex-col items-center text-center space-y-8 max-w-sm">
+              <div className="relative">
+                 <div className="absolute inset-0 bg-amber-500 blur-[80px] opacity-30 animate-pulse" />
+                 <div className="w-32 h-32 bg-amber-500 rounded-full flex items-center justify-center text-black shadow-2xl relative z-10">
+                    <Trophy size={64} />
+                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                 <h2 className="text-sm font-black uppercase tracking-[0.4em] text-amber-500">Mastery Achieved</h2>
+                 <h1 className="text-4xl font-black uppercase italic text-white tracking-tighter">{masteredSkill?.name}</h1>
+                 <p className="text-slate-400 text-xs font-medium">You've unlocked a higher branch in the tree.</p>
+              </div>
+
+              {newlyUnlocked && (
+                  <div className="bg-slate-900 border-2 border-indigo-500 p-6 rounded-[2rem] w-full space-y-3 shadow-2xl">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400">Next Logical Skill</p>
+                      <h4 className="text-xl font-black uppercase italic text-white">{newlyUnlocked.name}</h4>
+                      <div className="flex justify-center gap-1.5"><DifficultyIcon difficulty={newlyUnlocked.difficulty} /> <span className="text-[10px] text-slate-500 uppercase font-black">{newlyUnlocked.difficulty}</span></div>
+                  </div>
+              )}
+
+              <button onClick={() => setShowCelebration(false)} className="w-full py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all">Continue Journey</button>
+           </div>
+        </div>
       )}
 
-      {/* Video Modal */}
-      {activeVideo && (
-        <div className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4 backdrop-blur-md">
-           <div className="relative w-full max-w-2xl bg-black rounded-[2rem] overflow-hidden border border-slate-800 shadow-2xl animate-view">
-              <button 
-                onClick={() => setActiveVideo(null)}
-                className="absolute top-4 right-4 z-20 p-2 bg-black/50 backdrop-blur rounded-full text-white hover:bg-white hover:text-black transition-colors"
-              >
-                <X size={20} />
-              </button>
-              
-              <div className="aspect-video">
-                 <iframe 
-                   src={activeVideo.replace('watch?v=', 'embed/')} 
-                   title="Tutorial"
-                   className="w-full h-full"
-                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                   allowFullScreen
-                 />
+      {/* Custom Trick Modal */}
+      {showCustomModal && (
+        <div className="fixed inset-0 z-[250] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-view">
+           <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm space-y-6 shadow-2xl">
+              <div className="flex justify-between items-center">
+                 <h2 className="text-2xl font-black italic uppercase text-white tracking-tighter">Manifest Trick</h2>
+                 <button onClick={() => setShowCustomModal(false)} className="text-slate-500"><X size={24} /></button>
               </div>
+              <form onSubmit={handleCreateCustom} className="space-y-4">
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Trick Name</label>
+                    <input type="text" required className="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-white text-sm focus:border-indigo-500 outline-none font-bold italic" value={customName} onChange={e => setCustomName(e.target.value)} placeholder="e.g. Switch Shove" />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 ml-1">Discipline</label>
+                    <div className="flex gap-2">
+                        <button type="button" onClick={() => setCustomCat(Discipline.SKATE)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${customCat === Discipline.SKATE ? 'bg-indigo-500 border-indigo-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>Street</button>
+                        <button type="button" onClick={() => setCustomCat(Discipline.DOWNHILL)} className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${customCat === Discipline.DOWNHILL ? 'bg-amber-500 border-amber-400 text-white' : 'bg-slate-950 border-slate-800 text-slate-500'}`}>Hill</button>
+                    </div>
+                 </div>
+                 <button type="submit" className="w-full py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl flex items-center justify-center gap-2 mt-4"><Sparkles size={16} /> Add to Bag</button>
+              </form>
            </div>
         </div>
       )}

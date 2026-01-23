@@ -12,50 +12,26 @@ interface SpotCardProps {
 const SpotCard: React.FC<SpotCardProps> = ({ spot, onClick }) => {
   const [isClicked, setIsClicked] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const timeoutRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   const sessionCount = spot.sessions?.length || 0;
   const isSkate = spot.type === Discipline.SKATE;
   
-  // Check for sessions today
   const today = new Date().toISOString().split('T')[0];
   const hasSessionToday = spot.sessions?.some(s => s.date === today);
 
-  // Context-aware action logic
   const actionConfig = sessionCount > 0
     ? { label: 'Join Session', icon: UserPlus, color: 'bg-green-500 text-white', iconColor: 'text-white' }
     : { label: 'Call Session', icon: Plus, color: isSkate ? 'bg-indigo-500 text-white' : 'bg-amber-500 text-black', iconColor: isSkate ? 'text-white' : 'text-black' };
 
-  // Use spot images or fallback
   const images = spot.images && spot.images.length > 0 
     ? spot.images 
     : [`https://picsum.photos/seed/${spot.id}/400/400`];
 
-  // Ensure timeout is cleared if component unmounts
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
   const handleClick = (e: React.MouseEvent) => {
     triggerHaptic('light');
-    
-    // Clear any pending timeout to prevent state inconsistency on rapid clicks
-    if (timeoutRef.current) {
-      window.clearTimeout(timeoutRef.current);
-    }
-
     setIsClicked(true);
-    
-    // Reset state after animation duration
-    timeoutRef.current = window.setTimeout(() => {
-      setIsClicked(false);
-    }, 150); // Faster reset for snappier feel
-    
+    setTimeout(() => setIsClicked(false), 150);
     onClick();
   };
 
@@ -87,10 +63,6 @@ const SpotCard: React.FC<SpotCardProps> = ({ spot, onClick }) => {
           ref={scrollContainerRef}
           onScroll={handleScroll}
           className="w-full h-full flex overflow-x-auto snap-x snap-mandatory hide-scrollbar pointer-events-auto"
-          onClick={(e) => {
-            // Allow clicks to pass through to the parent handler if it's a tap.
-            // Note: Horizontal scrolling on touch devices typically won't fire onClick.
-          }}
         >
           {images.map((img, i) => (
             <img 
@@ -98,23 +70,24 @@ const SpotCard: React.FC<SpotCardProps> = ({ spot, onClick }) => {
               src={img} 
               alt={`${spot.name} ${i+1}`} 
               draggable={false}
+              loading="lazy" 
+              decoding="async"
               className="w-full h-full object-cover shrink-0 snap-center transition-transform duration-700 opacity-60 group-hover:opacity-80"
             />
           ))}
         </div>
 
-        {/* Gradients for readability - Pointer events none allows scrolling through them */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10 pointer-events-none" />
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-transparent z-10 pointer-events-none" />
       </div>
 
-      {/* Click Flash Effect Overlay (White Flash) */}
+      {/* Click Flash Effect Overlay */}
       <div className={`absolute inset-0 bg-white pointer-events-none z-50 transition-opacity duration-150 ease-out mix-blend-overlay ${isClicked ? 'opacity-20' : 'opacity-0'}`} />
 
-      {/* Touch/Active Overlay (Colored) */}
+      {/* Touch/Active Overlay */}
       <div className={`absolute inset-0 opacity-0 active:opacity-20 transition-opacity duration-75 pointer-events-none z-20 ${isSkate ? 'bg-indigo-400' : 'bg-amber-400'}`} />
 
-      {/* Session Badge (Top Right) */}
+      {/* Session Badge */}
       {sessionCount > 0 && (
          <div className="absolute top-4 right-4 z-40 flex flex-col items-end gap-1">
            {hasSessionToday && (
@@ -164,14 +137,12 @@ const SpotCard: React.FC<SpotCardProps> = ({ spot, onClick }) => {
                 {spot.difficulty}
              </span>
              
-             {/* Context Aware Action Button */}
              <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shadow-lg transition-transform group-hover:scale-105 ${actionConfig.color}`}>
                  <actionConfig.icon size={10} strokeWidth={3} className={actionConfig.iconColor} />
                  <span className="text-[8px] font-black uppercase tracking-widest">{actionConfig.label}</span>
              </div>
           </div>
 
-          {/* Pagination Indicators - Displayed below details */}
           {images.length > 1 && (
             <div className="flex gap-1 justify-center pt-1 opacity-90">
               {images.map((_, i) => (
