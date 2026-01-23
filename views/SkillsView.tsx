@@ -6,7 +6,8 @@ import { SKILL_LIBRARY } from '../constants.tsx';
 import { backend } from '../services/mockBackend.ts';
 import { triggerHaptic } from '../utils/haptics.ts';
 import { playSound } from '../utils/audio.ts';
-import { SkillCardSkeleton, EmptyState } from '../components/States.tsx';
+import { SkillCardSkeleton } from '../components/States.tsx';
+import VideoUploadModal from '../components/VideoUploadModal.tsx';
 import { 
   Youtube, 
   X, 
@@ -15,17 +16,10 @@ import {
   Square,
   Trophy,
   Circle,
-  Zap,
-  Mountain,
-  Check,
-  SearchX,
-  Filter,
-  PlayCircle,
-  Lock,
   Plus,
   Sparkles,
-  Award,
-  ChevronRight
+  Lock,
+  Clock
 } from 'lucide-react';
 
 const DifficultyIcon: React.FC<{ difficulty: Difficulty, size?: number }> = ({ difficulty, size = 12 }) => {
@@ -41,17 +35,18 @@ interface SkillCardProps {
   skill: Skill;
   isLocked: boolean;
   isJustUnlocked: boolean;
+  isPending: boolean; // New prop for proof status
   onUpdateState: (id: string, state: SkillState) => void;
   onWatchTutorial: (url: string) => void;
 }
 
-const SkillCard: React.FC<SkillCardProps> = ({ skill, isLocked, isJustUnlocked, onUpdateState, onWatchTutorial }) => {
+const SkillCard: React.FC<SkillCardProps> = ({ skill, isLocked, isJustUnlocked, isPending, onUpdateState, onWatchTutorial }) => {
   const isSkate = skill.category === Discipline.SKATE;
   const isMastered = skill.state === SkillState.MASTERED;
 
   return (
     <div className={`relative transition-all duration-500 ${isLocked ? 'opacity-50 grayscale' : 'opacity-100'} ${isJustUnlocked ? 'ring-4 ring-indigo-500 animate-pulse' : ''}`}>
-      <div className={`bg-slate-900 border ${isMastered ? 'border-amber-500 shadow-amber-500/10' : 'border-slate-800'} rounded-[2rem] p-5 relative overflow-hidden group`}>
+      <div className={`bg-slate-900 border ${isMastered ? 'border-amber-500 shadow-amber-500/10' : (isPending ? 'border-yellow-500/50' : 'border-slate-800')} rounded-[2rem] p-5 relative overflow-hidden group`}>
         <div className="flex justify-between items-start mb-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -70,6 +65,11 @@ const SkillCard: React.FC<SkillCardProps> = ({ skill, isLocked, isJustUnlocked, 
                 <Trophy size={14} fill="currentColor" />
              </div>
           )}
+          {isPending && (
+             <div className="w-8 h-8 rounded-full bg-yellow-900/50 border border-yellow-500 text-yellow-500 flex items-center justify-center shadow-lg animate-pulse" title="Proof Pending Review">
+                <Clock size={14} />
+             </div>
+          )}
         </div>
 
         <div className="space-y-3 relative z-10">
@@ -81,13 +81,17 @@ const SkillCard: React.FC<SkillCardProps> = ({ skill, isLocked, isJustUnlocked, 
                  if (s === SkillState.LANDED) activeColor = 'bg-green-600 text-white';
                  if (s === SkillState.MASTERED) activeColor = 'bg-amber-500 text-black';
 
+                 // Disable Mastered button if pending
+                 const disabled = s === SkillState.MASTERED && isPending;
+
                  return (
                     <button
                       key={s}
-                      onClick={() => onUpdateState(skill.id, s)}
-                      className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${active ? activeColor : 'text-slate-600'}`}
+                      onClick={() => !disabled && onUpdateState(skill.id, s)}
+                      disabled={disabled}
+                      className={`flex-1 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${active ? activeColor : 'text-slate-600'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {s.charAt(0).toUpperCase() + s.slice(1, 4)}
+                      {s === SkillState.MASTERED && isPending ? 'Reviewing' : s.charAt(0).toUpperCase() + s.slice(1, 4)}
                     </button>
                  )
               })}
@@ -130,6 +134,8 @@ const SkillsView: React.FC = () => {
   const [masteredSkill, setMasteredSkill] = useState<Skill | null>(null);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [justUnlockedId, setJustUnlockedId] = useState<string | null>(null);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [provingSkill, setProvingSkill] = useState<Skill | null>(null);
 
   // Custom Form
   const [customName, setCustomName] = useState('');
@@ -150,7 +156,7 @@ const SkillsView: React.FC = () => {
         states[s.id] = u.locker.includes(s.id) ? SkillState.MASTERED : SkillState.LEARNING;
     });
     cs.forEach(s => {
-        states[s.id] = SkillState.LEARNING; // Simplification: customs start at learning
+        states[s.id] = SkillState.LEARNING;
     });
     setSkillStates(states);
     setLoading(false);
@@ -158,27 +164,37 @@ const SkillsView: React.FC = () => {
 
   const handleUpdateState = async (skillId: string, newState: SkillState) => {
     if (!user) return;
-    triggerHaptic('medium');
-    playSound(newState === SkillState.MASTERED ? 'success' : 'click');
     
+    // Intercept Mastery for Proof of Skate
+    if (newState === SkillState.MASTERED) {
+      const skill = [...SKILL_LIBRARY, ...customSkills].find(s => s.id === skillId);
+      if (skill) {
+        setProvingSkill(skill);
+        setShowUploadModal(true);
+      }
+      return; 
+    }
+
+    // Normal state update (Learning -> Landed)
+    triggerHaptic('medium');
+    playSound('click');
     setSkillStates(prev => ({ ...prev, [skillId]: newState }));
     await backend.updateSkillState(skillId, newState);
+  };
+
+  const handleProofSubmit = async (file: File) => {
+    if (!provingSkill || !user) return;
     
-    if (newState === SkillState.MASTERED) {
-       const updatedUser = await backend.masterSkill(skillId);
-       setUser(updatedUser);
-       
-       const justMastered = SKILL_LIBRARY.find(s => s.id === skillId);
-       const nextInTree = SKILL_LIBRARY.find(s => s.prerequisiteId === skillId);
-       
-       if (nextInTree) {
-           setNewlyUnlocked(nextInTree);
-           setJustUnlockedId(nextInTree.id);
-           setTimeout(() => setJustUnlockedId(null), 5000); // Highlight for 5s
-       }
-       setMasteredSkill(justMastered || null);
-       setShowCelebration(true);
-    }
+    // 1. Submit Proof to Backend (Mock)
+    await backend.submitSkillProof(provingSkill.id);
+    
+    // 2. Update User State locally to reflect pending
+    setUser({ ...user, pendingSkills: [...user.pendingSkills, provingSkill.id] });
+    
+    // 3. Update Quests (Upload type)
+    await backend.updateQuestProgress('UPLOAD', 1);
+
+    setProvingSkill(null);
   };
 
   const handleCreateCustom = async (e: React.FormEvent) => {
@@ -247,12 +263,14 @@ const SkillsView: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
            {filteredSkills.map(skill => {
              const isLocked = skill.prerequisiteId ? (skillStates[skill.prerequisiteId] !== SkillState.MASTERED) : false;
+             const isPending = user?.pendingSkills?.includes(skill.id) || false;
              return (
                 <SkillCard 
                   key={skill.id}
                   skill={skill}
                   isLocked={isLocked}
                   isJustUnlocked={justUnlockedId === skill.id}
+                  isPending={isPending}
                   onUpdateState={handleUpdateState}
                   onWatchTutorial={(url) => window.open(url, '_blank')}
                 />
@@ -261,9 +279,20 @@ const SkillsView: React.FC = () => {
         </div>
       )}
 
-      {/* Celebration Modal */}
+      {/* Video Upload Modal */}
+      {showUploadModal && provingSkill && (
+         <VideoUploadModal 
+            title={`Mastering ${provingSkill.name}`}
+            description="Upload a clip of you landing this trick clean. Our mods will verify it within 24 hours."
+            onClose={() => setShowUploadModal(false)}
+            onUpload={handleProofSubmit}
+         />
+      )}
+
+      {/* Celebration Modal (Existing) */}
       {showCelebration && (
         <div className="fixed inset-0 z-[300] bg-black/95 flex items-center justify-center p-6 animate-view">
+           {/* ... existing celebration content ... */}
            <div className="flex flex-col items-center text-center space-y-8 max-w-sm">
               <div className="relative">
                  <div className="absolute inset-0 bg-amber-500 blur-[80px] opacity-30 animate-pulse" />
@@ -271,13 +300,11 @@ const SkillsView: React.FC = () => {
                     <Trophy size={64} />
                  </div>
               </div>
-              
               <div className="space-y-2">
                  <h2 className="text-sm font-black uppercase tracking-[0.4em] text-amber-500">Mastery Achieved</h2>
                  <h1 className="text-4xl font-black uppercase italic text-white tracking-tighter">{masteredSkill?.name}</h1>
                  <p className="text-slate-400 text-xs font-medium">You've unlocked a higher branch in the tree.</p>
               </div>
-
               {newlyUnlocked && (
                   <div className="bg-slate-900 border-2 border-indigo-500 p-6 rounded-[2rem] w-full space-y-3 shadow-2xl">
                       <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400">Next Logical Skill</p>
@@ -285,13 +312,12 @@ const SkillsView: React.FC = () => {
                       <div className="flex justify-center gap-1.5"><DifficultyIcon difficulty={newlyUnlocked.difficulty} /> <span className="text-[10px] text-slate-500 uppercase font-black">{newlyUnlocked.difficulty}</span></div>
                   </div>
               )}
-
               <button onClick={() => setShowCelebration(false)} className="w-full py-4 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs active:scale-95 transition-all">Continue Journey</button>
            </div>
         </div>
       )}
 
-      {/* Custom Trick Modal */}
+      {/* Custom Trick Modal (Existing) */}
       {showCustomModal && (
         <div className="fixed inset-0 z-[250] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-view">
            <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] p-8 w-full max-w-sm space-y-6 shadow-2xl">

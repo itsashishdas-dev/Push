@@ -157,15 +157,21 @@ export const generateStateCover = async (stateName: string, landmark: string): P
   }
 };
 
+// Fixed function name typo: askAICo coach -> askAICoach
 /**
  * Handles complex coaching queries using Thinking Mode with Gemini 3 Pro.
+ * Optimized for complex technique analysis and strategic spot navigation.
  */
 export const askAICoach = async (query: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: `You are 'Coach PUSH', an expert AI skate coach in India. User Query: ${query}`,
+      contents: `You are 'Coach PUSH', an expert AI skate coach in India. 
+      You have deep knowledge of skate physics, Indian spot architecture, and the mental game of extreme sports.
+      Provide detailed, reasoned, and encouraging feedback.
+      
+      User Query: ${query}`,
       config: {
         thinkingConfig: {
           thinkingBudget: 32768
@@ -175,6 +181,7 @@ export const askAICoach = async (query: string) => {
     
     return response.text || "I'm buffering on that trick. Try again!";
   } catch (error) {
-    return "The skate network is busy. Keep pushing and try later!";
+    console.error("AI Coach thinking failed:", error);
+    return "The skate network is busy processing a heavy line. Keep pushing and try later!";
   }
 };

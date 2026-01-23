@@ -6,7 +6,8 @@ import { Swords, Trophy, MapPin, Check, Video, Loader2, PlayCircle, Play, X, Upl
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
 import { COLLECTIBLES_DATABASE } from '../constants';
-import { ChallengeCardSkeleton, EmptyState } from '../components/States'; // Import States
+import { ChallengeCardSkeleton, EmptyState } from '../components/States';
+import VideoUploadModal from '../components/VideoUploadModal';
 
 const ChallengesView: React.FC = () => {
   const [challenges, setChallenges] = useState<(Challenge & { spotName: string })[]>([]);
@@ -14,7 +15,7 @@ const ChallengesView: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewingSubmission, setViewingSubmission] = useState<ChallengeSubmission | null>(null);
-  const [uploadingChallengeId, setUploadingChallengeId] = useState<string | null>(null);
+  const [uploadingChallenge, setUploadingChallenge] = useState<(Challenge & { spotName: string }) | null>(null);
   const [unlockedItem, setUnlockedItem] = useState<Collectible | null>(null);
 
   useEffect(() => {
@@ -47,36 +48,31 @@ const ChallengesView: React.FC = () => {
     setLoading(false);
   };
 
-  const handleUploadAttempt = async (e: React.ChangeEvent<HTMLInputElement>, challengeId: string) => {
-    if (e.target.files && e.target.files[0]) {
-      setUploadingChallengeId(challengeId);
-      triggerHaptic('medium');
-      playSound('click');
+  const handleUploadComplete = async (file: File) => {
+    if (!uploadingChallenge) return;
+    const challengeId = uploadingChallenge.id;
+    
+    try {
+      const { newUnlocks, user: updatedUser } = await backend.completeChallenge(challengeId);
       
-      try {
-        const { newUnlocks, user: updatedUser } = await backend.completeChallenge(challengeId);
-        
-        setUser(updatedUser);
-        
-        // Refresh local challenge state to show completion + 1
-        setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, completions: c.completions + 1 } : c));
-        
-        // Refresh submissions
-        const newSubs = await backend.getChallengeSubmissions(challengeId);
-        setSubmissionsMap(prev => ({ ...prev, [challengeId]: newSubs }));
-        
-        setUploadingChallengeId(null);
-        triggerHaptic('success');
-        playSound('unlock');
+      setUser(updatedUser);
+      
+      // Refresh local challenge state to show completion + 1
+      setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, completions: c.completions + 1 } : c));
+      
+      // Refresh submissions
+      const newSubs = await backend.getChallengeSubmissions(challengeId);
+      setSubmissionsMap(prev => ({ ...prev, [challengeId]: newSubs }));
+      
+      setUploadingChallenge(null);
+      playSound('unlock');
 
-        if (newUnlocks.length > 0) {
-           const item = COLLECTIBLES_DATABASE.find(c => c.id === newUnlocks[0]);
-           if (item) setUnlockedItem(item);
-        }
-      } catch (error) {
-        console.error("Upload failed", error);
-        setUploadingChallengeId(null);
+      if (newUnlocks.length > 0) {
+         const item = COLLECTIBLES_DATABASE.find(c => c.id === newUnlocks[0]);
+         if (item) setUnlockedItem(item);
       }
+    } catch (error) {
+      console.error("Upload failed", error);
     }
   };
 
@@ -109,7 +105,6 @@ const ChallengesView: React.FC = () => {
         <div className="space-y-4">
           {challenges.map(challenge => {
             const isCompleted = user?.completedChallengeIds.includes(challenge.id);
-            const isUploading = uploadingChallengeId === challenge.id;
             const submissions = submissionsMap[challenge.id] || [];
 
             return (
@@ -167,17 +162,28 @@ const ChallengesView: React.FC = () => {
                    </div>
                    
                    {!isCompleted && (
-                     <label className={`cursor-pointer bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95 ${isUploading ? 'opacity-50' : ''}`}>
-                       {isUploading ? <Loader2 size={12} className="animate-spin" /> : <Video size={12} />}
-                       {isUploading ? 'Uploading...' : 'Prove It'}
-                       <input type="file" accept="video/*" className="hidden" disabled={isUploading} onChange={(e) => handleUploadAttempt(e, challenge.id)} />
-                     </label>
+                     <button 
+                       onClick={() => setUploadingChallenge(challenge)}
+                       className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-all active:scale-95"
+                     >
+                       <Video size={12} /> Prove It
+                     </button>
                    )}
                  </div>
               </div>
             );
           })}
         </div>
+      )}
+
+      {/* Upload Modal */}
+      {uploadingChallenge && (
+          <VideoUploadModal 
+              title={uploadingChallenge.title}
+              description={`Prove you completed this challenge at ${uploadingChallenge.spotName || 'the spot'}.`}
+              onClose={() => setUploadingChallenge(null)}
+              onUpload={handleUploadComplete}
+          />
       )}
 
       {/* Video Submission Viewer Modal */}

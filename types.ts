@@ -41,6 +41,18 @@ export enum MentorBadge {
   EXPERT = 'expert'
 }
 
+export interface Quest {
+  id: string;
+  title: string;
+  description: string;
+  type: 'CHECK_IN' | 'UPLOAD' | 'DISTANCE';
+  target: number;
+  current: number;
+  xpReward: number;
+  isCompleted: boolean;
+  expiresIn: string; // e.g., "14h 30m"
+}
+
 export interface Collectible {
   id: string;
   name: string;
@@ -121,6 +133,7 @@ export interface User {
   avatar?: string;
   locker: string[];
   completedChallengeIds: string[];
+  pendingSkills: string[]; // IDs of skills waiting for verification
   isMentor: boolean;
   friends: string[];
   friendRequests: FriendRequest[];
@@ -180,6 +193,7 @@ export interface ExtendedSession {
   spotName: string;
   spotType: Discipline;
   participants: string[];
+  reminderSet?: boolean;
 }
 
 export interface Challenge {

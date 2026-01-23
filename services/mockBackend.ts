@@ -2,11 +2,11 @@
 import { 
   Spot, User, VerificationStatus, Discipline, Difficulty, Review, 
   SkillState, Skill, DailyNote, Challenge, Mentor,
-  ChallengeSubmission, Crew, ChatMessage, ExtendedSession
+  ChallengeSubmission, Crew, ChatMessage, ExtendedSession, Quest
 } from '../types';
 import { MOCK_SPOTS, SKILL_LIBRARY, MOCK_CHALLENGES, MOCK_SESSIONS, MOCK_MENTORS, MOCK_NOTES } from '../constants';
 
-const DATA_VERSION = 'v1.5-stable';
+const DATA_VERSION = 'v1.7-beta';
 
 const STORAGE_KEYS = {
   VERSION: 'push_db_version',
@@ -20,7 +20,7 @@ const STORAGE_KEYS = {
   NOTES: 'push_db_notes',
   CUSTOM_SKILLS: 'push_db_custom_skills',
   CREWS: 'push_db_crews',
-  USERS: 'push_db_users'
+  QUESTS: 'push_db_quests'
 };
 
 class MockBackend {
@@ -28,7 +28,7 @@ class MockBackend {
     const currentVersion = localStorage.getItem(STORAGE_KEYS.VERSION);
     
     if (currentVersion !== DATA_VERSION) {
-      localStorage.clear(); // Hard reset for version mismatch to ensure stability
+      localStorage.clear(); 
       localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
       localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(MOCK_SPOTS));
       localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
@@ -38,7 +38,6 @@ class MockBackend {
       this.resetUser();
     }
 
-    // Secondary fallback to ensure core data is never null
     if (!localStorage.getItem(STORAGE_KEYS.SPOTS)) localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(MOCK_SPOTS));
     if (!localStorage.getItem(STORAGE_KEYS.SESSIONS)) localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
     if (!localStorage.getItem(STORAGE_KEYS.CHALLENGES)) localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
@@ -58,6 +57,7 @@ class MockBackend {
       onboardingComplete: false, 
       locker: [],
       completedChallengeIds: [],
+      pendingSkills: [],
       isMentor: false,
       friends: [],
       friendRequests: [],
@@ -117,9 +117,35 @@ class MockBackend {
     return this.safeParse(STORAGE_KEYS.CHALLENGES, MOCK_CHALLENGES);
   }
 
+  async getSpotChallenges(spotId: string): Promise<Challenge[]> {
+    const all = await this.getAllChallenges();
+    return all.filter(c => c.spotId === spotId);
+  }
+
   async getAllSessions(): Promise<ExtendedSession[]> {
     this.initDB();
     return this.safeParse(STORAGE_KEYS.SESSIONS, MOCK_SESSIONS);
+  }
+
+  async createSession(data: Partial<ExtendedSession>): Promise<ExtendedSession> {
+    const user = await this.getUser();
+    const sessions = await this.getAllSessions();
+    const newSession: ExtendedSession = {
+      id: `sess-${Date.now()}`,
+      userId: user.id,
+      userName: user.name,
+      title: data.title || 'Untitled Shred',
+      date: data.date || new Date().toISOString().split('T')[0],
+      time: data.time || '10:00',
+      spotId: data.spotId!,
+      spotName: data.spotName!,
+      spotType: data.spotType!,
+      participants: [user.id],
+      reminderSet: data.reminderSet
+    };
+    sessions.push(newSession);
+    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+    return newSession;
   }
 
   async getMentors(): Promise<Mentor[]> {
@@ -148,15 +174,25 @@ class MockBackend {
         user.locker.push(skillId);
         user.xp += 500;
         user.masteredCount += 1;
+        // Remove from pending if it was there
+        user.pendingSkills = user.pendingSkills.filter(id => id !== skillId);
         return this.updateUser(user);
     }
     return user;
   }
 
-  async updateSkillState(skillId: string, state: SkillState): Promise<void> {
-    if (state === SkillState.MASTERED) {
-      await this.masterSkill(skillId);
+  async submitSkillProof(skillId: string): Promise<User> {
+    const user = await this.getUser();
+    if (!user.pendingSkills.includes(skillId) && !user.locker.includes(skillId)) {
+      user.pendingSkills.push(skillId);
+      return this.updateUser(user);
     }
+    return user;
+  }
+
+  async updateSkillState(skillId: string, state: SkillState): Promise<void> {
+    // This is mostly local state management now with the new flow, 
+    // but we might store intermediate states here if needed.
   }
 
   async joinSession(sessionId: string): Promise<ExtendedSession> {
@@ -206,6 +242,10 @@ class MockBackend {
     if (!user.completedChallengeIds.includes(challengeId)) {
         user.completedChallengeIds.push(challengeId);
         user.xp += 1000;
+        
+        // Also update quests
+        await this.updateQuestProgress('UPLOAD', 1);
+
         const updated = await this.updateUser(user);
         return { newUnlocks: [`sticker_${challengeId}`], user: updated };
     }
@@ -249,7 +289,6 @@ class MockBackend {
     ];
   }
 
-  // Implementation of missing methods for Custom Skills
   async getCustomSkills(): Promise<Skill[]> {
     this.initDB();
     return this.safeParse(STORAGE_KEYS.CUSTOM_SKILLS, []);
@@ -271,7 +310,6 @@ class MockBackend {
     return newSkill;
   }
 
-  // Implementation of missing methods for Crews
   async getUserCrew(crewId: string): Promise<Crew | null> {
     const crews = this.safeParse(STORAGE_KEYS.CREWS, []);
     return crews.find((c: Crew) => c.id === crewId) || null;
@@ -319,7 +357,6 @@ class MockBackend {
     return newCrew;
   }
 
-  // Implementation of missing methods for Identity and Friends management
   async searchUsers(query: string): Promise<User[]> {
     return [];
   }
@@ -338,7 +375,6 @@ class MockBackend {
       return [];
   }
 
-  // Implementation of missing methods for Account management
   async checkStreakRewards(user: User): Promise<User> {
     if (user.streak >= 7 && !user.locker.includes('sticker_7_day')) {
       user.locker.push('sticker_7_day');
@@ -348,6 +384,50 @@ class MockBackend {
 
   async deleteAccount(): Promise<void> {
     localStorage.clear();
+  }
+
+  // --- Quests System ---
+
+  async getDailyQuests(): Promise<Quest[]> {
+    const stored = this.safeParse(STORAGE_KEYS.QUESTS, []);
+    if (stored.length > 0) return stored;
+
+    const newQuests: Quest[] = [
+        { id: 'q1', title: 'Scout the Area', description: 'Check-in at 2 different spots.', type: 'CHECK_IN', target: 2, current: 0, xpReward: 500, isCompleted: false, expiresIn: '14h 20m' },
+        { id: 'q2', title: 'Proof of Shred', description: 'Upload one trick or line.', type: 'UPLOAD', target: 1, current: 0, xpReward: 800, isCompleted: false, expiresIn: '14h 20m' },
+        { id: 'q3', title: 'Marathon', description: 'Travel 5km between spots.', type: 'DISTANCE', target: 5, current: 2, xpReward: 600, isCompleted: false, expiresIn: '14h 20m' }
+    ];
+    localStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(newQuests));
+    return newQuests;
+  }
+
+  async updateQuestProgress(type: 'CHECK_IN' | 'UPLOAD' | 'DISTANCE', amount: number): Promise<Quest[]> {
+    const quests = await this.getDailyQuests();
+    let updated = false;
+
+    const newQuests = quests.map(q => {
+        if (q.type === type && !q.isCompleted) {
+            const newCurrent = Math.min(q.current + amount, q.target);
+            if (newCurrent !== q.current) updated = true;
+            const completedNow = newCurrent >= q.target;
+            
+            if (completedNow && !q.isCompleted) {
+               // Grant XP immediately in mock
+               this.getUser().then(u => {
+                   u.xp += q.xpReward;
+                   this.updateUser(u);
+               });
+            }
+
+            return { ...q, current: newCurrent, isCompleted: completedNow };
+        }
+        return q;
+    });
+
+    if (updated) {
+        localStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(newQuests));
+    }
+    return newQuests;
   }
 }
 
