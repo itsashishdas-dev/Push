@@ -4,6 +4,13 @@ export enum Discipline {
   DOWNHILL = 'downhill'
 }
 
+export enum SpotCategory {
+  STREET = 'street',
+  PARK = 'park',
+  DIY = 'diy',
+  DOWNHILL = 'downhill'
+}
+
 export enum Difficulty {
   BEGINNER = 'beginner',
   INTERMEDIATE = 'intermediate',
@@ -21,6 +28,13 @@ export enum VerificationStatus {
   PENDING = 'pending',
   VERIFIED = 'verified',
   REJECTED = 'rejected'
+}
+
+export enum SpotStatus {
+  DRY = 'dry',
+  WET = 'wet',
+  CROWDED = 'crowded',
+  MAINTENANCE = 'maintenance'
 }
 
 export enum CollectibleType {
@@ -155,6 +169,7 @@ export interface Spot {
   id: string;
   name: string;
   type: Discipline;
+  category?: SpotCategory; // Added for map icon specificity
   difficulty: Difficulty;
   state: string;
   surface: string;
@@ -166,6 +181,8 @@ export interface Spot {
   notes: string;
   isVerified: boolean;
   verificationStatus: VerificationStatus;
+  status?: SpotStatus; // Live status
+  distance?: number; // Calculated distance from user
   images?: string[];
   sessions: any[];
   rating: number;
@@ -194,6 +211,7 @@ export interface ExtendedSession {
   spotType: Discipline;
   participants: string[];
   reminderSet?: boolean;
+  notes?: string;
 }
 
 export interface Challenge {

@@ -1,5 +1,5 @@
 {
-  "name": "PUSH - Skate & Downhill India",
+  "name": "SPOTS - Skate & Downhill",
   "description": "An AI-powered mobile app for Indian skateboarders and longboarders to find spots, track skills, and compete on leaderboards.",
   "requestFramePermissions": [
     "geolocation",

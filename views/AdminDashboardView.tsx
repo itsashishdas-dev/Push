@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   ChevronLeft, 
@@ -56,7 +55,7 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
     // Using simple filter for mock deletion since we don't have a backend.deleteSpot
     const allSpots = await backend.getSpots();
     const filtered = allSpots.filter(s => s.id !== spotId);
-    localStorage.setItem('push_spots_data', JSON.stringify(filtered));
+    localStorage.setItem('spots_spots_data', JSON.stringify(filtered));
     loadData();
   };
 

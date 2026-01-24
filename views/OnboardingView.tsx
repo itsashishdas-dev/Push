@@ -40,12 +40,10 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((pos) => {
         // In a real app, we'd reverse geocode here. 
-        // For the prototype, we mark it as verified GPS.
         setTimeout(() => {
            setLocation('Verified GPS Location');
            setIsLocating(false);
            triggerHaptic('success');
-           // Auto-advance to next step upon success
            setStep(prev => prev + 1);
         }, 1500);
       }, () => {
@@ -212,7 +210,7 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
             </div>
           )}
 
-          {/* STEP 3: LOCATION (Verified Fix) */}
+          {/* STEP 3: LOCATION */}
           {step === 3 && (
             <div className="space-y-8 animate-view flex flex-col items-center text-center pt-4">
               <div className="w-32 h-32 bg-slate-900 rounded-full flex items-center justify-center relative mb-2">
@@ -222,9 +220,9 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
               </div>
 
               <div className="space-y-4">
-                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-tight">ENABLE SPOT RADAR</h2>
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white leading-tight">ENABLE LOCATION</h2>
                 <p className="text-slate-400 text-sm font-medium leading-relaxed max-w-[280px] mx-auto uppercase">
-                  PUSH needs your location to show <span className="text-white font-bold">hidden spots</span> and <span className="text-white font-bold">active crews</span> near you.
+                  SPOTS needs your location to show <span className="text-white font-bold">hidden spots</span> and <span className="text-white font-bold">active crews</span> near you.
                 </p>
                 <div className="inline-flex items-center gap-2 bg-slate-900/40 border border-slate-800 px-4 py-2 rounded-xl">
                   <ShieldCheck size={12} className="text-green-500" />
@@ -239,7 +237,7 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
                   className={`w-full py-5 bg-white text-black rounded-full flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-black uppercase tracking-widest text-xs shadow-lg ${isLocating ? 'opacity-80 cursor-wait' : ''}`}
                 >
                   {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 mb-0.5" />}
-                  {isLocating ? 'Scanning Network...' : 'Allow Location Access'}
+                  {isLocating ? 'Locating...' : 'Allow Access'}
                 </button>
 
                 <div className="relative group w-full">

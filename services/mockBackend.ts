@@ -2,25 +2,25 @@
 import { 
   Spot, User, VerificationStatus, Discipline, Difficulty, Review, 
   SkillState, Skill, DailyNote, Challenge, Mentor,
-  ChallengeSubmission, Crew, ChatMessage, ExtendedSession, Quest
+  ChallengeSubmission, Crew, ChatMessage, ExtendedSession, Quest, SpotStatus
 } from '../types';
 import { MOCK_SPOTS, SKILL_LIBRARY, MOCK_CHALLENGES, MOCK_SESSIONS, MOCK_MENTORS, MOCK_NOTES } from '../constants';
 
 const DATA_VERSION = 'v1.7-beta';
 
 const STORAGE_KEYS = {
-  VERSION: 'push_db_version',
-  SPOTS: 'push_db_spots',
-  USER: 'push_db_user',
-  AUTH: 'push_db_auth',
-  CHATS: 'push_db_chats',
-  SESSIONS: 'push_db_sessions',
-  CHALLENGES: 'push_db_challenges',
-  MENTORS: 'push_db_mentors',
-  NOTES: 'push_db_notes',
-  CUSTOM_SKILLS: 'push_db_custom_skills',
-  CREWS: 'push_db_crews',
-  QUESTS: 'push_db_quests'
+  VERSION: 'spots_db_version',
+  SPOTS: 'spots_db_spots',
+  USER: 'spots_db_user',
+  AUTH: 'spots_db_auth',
+  CHATS: 'spots_db_chats',
+  SESSIONS: 'spots_db_sessions',
+  CHALLENGES: 'spots_db_challenges',
+  MENTORS: 'spots_db_mentors',
+  NOTES: 'spots_db_notes',
+  CUSTOM_SKILLS: 'spots_db_custom_skills',
+  CREWS: 'spots_db_crews',
+  QUESTS: 'spots_db_quests'
 };
 
 class MockBackend {
@@ -30,7 +30,13 @@ class MockBackend {
     if (currentVersion !== DATA_VERSION) {
       localStorage.clear(); 
       localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
-      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(MOCK_SPOTS));
+      // Enrich mock spots with status
+      const enrichedSpots = MOCK_SPOTS.map(s => ({
+        ...s,
+        status: Math.random() > 0.8 ? SpotStatus.WET : Math.random() > 0.8 ? SpotStatus.CROWDED : SpotStatus.DRY
+      }));
+      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(enrichedSpots));
+      
       localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
       localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
       localStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(MOCK_MENTORS));
@@ -38,7 +44,13 @@ class MockBackend {
       this.resetUser();
     }
 
-    if (!localStorage.getItem(STORAGE_KEYS.SPOTS)) localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(MOCK_SPOTS));
+    if (!localStorage.getItem(STORAGE_KEYS.SPOTS)) {
+        const enrichedSpots = MOCK_SPOTS.map(s => ({
+            ...s,
+            status: Math.random() > 0.8 ? SpotStatus.WET : Math.random() > 0.8 ? SpotStatus.CROWDED : SpotStatus.DRY
+        }));
+        localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(enrichedSpots));
+    }
     if (!localStorage.getItem(STORAGE_KEYS.SESSIONS)) localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
     if (!localStorage.getItem(STORAGE_KEYS.CHALLENGES)) localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
   }
@@ -141,7 +153,8 @@ class MockBackend {
       spotName: data.spotName!,
       spotType: data.spotType!,
       participants: [user.id],
-      reminderSet: data.reminderSet
+      reminderSet: data.reminderSet,
+      notes: data.notes || ''
     };
     sessions.push(newSession);
     localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
@@ -253,14 +266,14 @@ class MockBackend {
   }
 
   async getPendingMentorApplications(): Promise<any[]> {
-    return this.safeParse('push_db_mentor_apps', []);
+    return this.safeParse('spots_db_mentor_apps', []);
   }
 
   async applyToBecomeMentor(data: any): Promise<void> {
     const user = await this.getUser();
-    const apps = this.safeParse('push_db_mentor_apps', []);
+    const apps = this.safeParse('spots_db_mentor_apps', []);
     apps.push({ user, application: data });
-    localStorage.setItem('push_db_mentor_apps', JSON.stringify(apps));
+    localStorage.setItem('spots_db_mentor_apps', JSON.stringify(apps));
   }
 
   async getMyMentorProfile(): Promise<Mentor | undefined> {
@@ -270,13 +283,13 @@ class MockBackend {
   }
 
   async getUserBookings(): Promise<any[]> {
-    return this.safeParse('push_db_bookings', []);
+    return this.safeParse('spots_db_bookings', []);
   }
 
   async reviewMentorApplication(userId: string, approved: boolean): Promise<void> {
-    const apps = this.safeParse('push_db_mentor_apps', []);
+    const apps = this.safeParse('spots_db_mentor_apps', []);
     const filtered = apps.filter((a: any) => a.user.id !== userId);
-    localStorage.setItem('push_db_mentor_apps', JSON.stringify(filtered));
+    localStorage.setItem('spots_db_mentor_apps', JSON.stringify(filtered));
     if (approved) {
       const user = await this.getUser();
       if (user.id === userId) { user.isMentor = true; await this.updateUser(user); }

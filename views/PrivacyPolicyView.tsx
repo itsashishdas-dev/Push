@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 
 interface PrivacyPolicyViewProps {
@@ -17,7 +16,7 @@ const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) => {
       <div className="flex-1 overflow-y-auto p-8 space-y-8 text-slate-400 text-sm leading-relaxed hide-scrollbar pb-32">
         <section className="space-y-4">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Last updated: Jan 2024</p>
-          <p className="italic">PUSH respects your privacy and is committed to protecting your personal data.</p>
+          <p className="italic">SPOTS respects your privacy and is committed to protecting your personal data.</p>
         </section>
 
         <section className="space-y-3">
@@ -55,12 +54,12 @@ const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack }) => {
 
         <section className="space-y-3">
           <h3 className="text-white font-black uppercase italic tracking-tight">Data Sharing</h3>
-          <p>We only share data with essential service providers (cloud storage, authentication) to operate PUSH. No third-party advertising trackers.</p>
+          <p>We only share data with essential service providers (cloud storage, authentication) to operate SPOTS. No third-party advertising trackers.</p>
         </section>
 
         <section className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl">
           <h3 className="text-red-400 font-black uppercase italic tracking-tight mb-2">Safety Disclaimer</h3>
-          <p className="text-[11px] text-red-200">Skateboarding and downhill longboarding involve risk. PUSH does not take responsibility for injuries or damages.</p>
+          <p className="text-[11px] text-red-200">Skateboarding and downhill longboarding involve risk. SPOTS does not take responsibility for injuries or damages.</p>
         </section>
       </div>
     </div>

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 interface LoginViewProps {
   onLogin: () => void;
@@ -9,83 +9,77 @@ interface LoginViewProps {
 
 const LoginView: React.FC<LoginViewProps> = ({ onLogin, onShowPrivacy }) => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleAuth = () => {
     setIsAuthenticating(true);
-    onLogin();
+    // Simulate network authentication delay
+    setTimeout(onLogin, 1500);
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-8 bg-black animate-view overflow-y-auto relative">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+    <div className="relative h-screen w-full bg-[#050505] flex flex-col items-center justify-center overflow-hidden font-sans isolate text-center">
       
-      <div className="w-full max-w-sm flex flex-col items-center justify-between space-y-16 py-8">
-        {/* Brand Header */}
-        <div className="flex flex-col items-center space-y-6">
-          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-[0_0_60px_rgba(255,255,255,0.08)]">
-             <span className="text-black text-4xl font-black italic tracking-tighter">P</span>
-          </div>
-          <div className="text-center space-y-2">
-            <h1 className="text-6xl font-black italic uppercase tracking-tighter leading-none text-white">PUSH</h1>
-            <p className="text-slate-500 text-xs font-black uppercase tracking-[0.3em] opacity-80">India's Core Skate Network</p>
-          </div>
-        </div>
-
-        {/* Main Copy */}
-        <div className="text-center space-y-2">
-          <p className="text-slate-200 text-lg font-bold italic">Find your spot. Track your progression.</p>
-          <p className="text-slate-500 text-sm font-medium">No noise. Just skating.</p>
-        </div>
-
-        {/* Secure Auth Actions */}
-        <div className="w-full space-y-4 px-2">
-          {isAuthenticating ? (
-            <div className="w-full h-16 flex flex-col items-center justify-center gap-4 bg-slate-900/50 rounded-full border border-slate-800">
-              <Loader2 className="animate-spin text-indigo-500" size={24} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Securing Session...</span>
-            </div>
-          ) : (
-            <>
-              <button 
-                onClick={handleAuth}
-                className="w-full py-5 bg-[#C7C7CC] hover:bg-[#BABABC] text-black rounded-full flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-black uppercase tracking-widest text-xs shadow-lg"
-              >
-                <svg className="w-4 h-4 mb-0.5" viewBox="0 0 24 24" fill="currentColor">
-                   <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74 1.18 0 2.45-1.62 4.37-1.54 1.85.08 3.2.74 4.14 1.95-3.51 1.76-2.9 6.22 1.14 7.9-.59 1.74-1.78 3.52-2.85 4.79-.69.83-1.43 1.54-1.88 1.13zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.54 4.5-3.74 4.25z"/>
-                </svg>
-                Sign in with Apple
-              </button>
-              
-              <button 
-                onClick={handleAuth}
-                className="w-full py-5 bg-[#1C1C1E] border border-slate-800/50 text-white rounded-full flex items-center justify-center gap-3 active:scale-[0.98] transition-all font-black uppercase tracking-widest text-xs shadow-lg hover:bg-slate-900"
-              >
-                <svg className="w-4 h-4 mb-0.5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
-                </svg>
-                Sign in with Google
-              </button>
-
-              <button 
-                onClick={handleAuth}
-                className="w-full py-4 text-slate-600 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-colors mt-2"
-              >
-                Continue with Email
-              </button>
-            </>
-          )}
-        </div>
-
-        {/* Trust & Policy Footer */}
-        <div className="w-full">
-          <p className="text-[10px] text-slate-700 text-center font-bold leading-relaxed max-w-[280px] mx-auto uppercase tracking-tighter">
-            By signing in you agree to our <button onClick={onShowPrivacy} className="text-slate-400 underline decoration-indigo-500/50 underline-offset-4">Privacy Terms</button> and <button onClick={onShowPrivacy} className="text-slate-400 underline decoration-indigo-500/50 underline-offset-4">Safety Guide</button>.
-          </p>
-        </div>
+      {/* --- BACKGROUND LAYERS --- */}
+      <div className="absolute inset-0 z-0 opacity-[0.04] pointer-events-none mix-blend-overlay" 
+           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
       </div>
 
-      <div className="fixed -bottom-48 -left-48 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
-      <div className="fixed -top-48 -right-48 w-96 h-96 bg-indigo-500/5 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] h-[100vw] bg-indigo-900/20 blur-[100px] rounded-full pointer-events-none" />
+
+      {/* Organic Loop - Simplified */}
+      <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] pointer-events-none transition-opacity duration-1000 ${mounted ? 'opacity-100' : 'opacity-0'}`}>
+         <svg className="w-full h-full animate-[spin_20s_linear_infinite]" viewBox="0 0 380 380" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path 
+             d="M190 20C120 20 40 60 25 150C10 240 80 340 190 360C300 380 360 300 370 200C380 100 320 30 190 20Z" 
+             stroke="#60A5FA" 
+             strokeWidth="2" 
+             strokeLinecap="round"
+             className="drop-shadow-[0_0_15px_rgba(96,165,250,0.5)]"
+           />
+        </svg>
+      </div>
+
+      {/* --- CONTENT --- */}
+
+      <div className={`relative z-10 flex flex-col items-center gap-12 transition-all duration-1000 delay-300 ${mounted ? 'translate-y-0 opacity-100' : 'translate-y-5 opacity-0'}`}>
+        
+        {/* Brand Group */}
+        <div className="flex flex-col items-center gap-2">
+          <h1 className="text-8xl font-black italic tracking-tighter text-white drop-shadow-2xl">
+            SPOTS
+          </h1>
+          <p className="text-slate-400 font-bold text-[10px] tracking-[0.4em] uppercase">
+            Skateboarding Network
+          </p>
+        </div>
+
+        {/* Action Group */}
+        <div className="w-full max-w-xs flex flex-col items-center gap-6">
+          <button 
+              onClick={handleAuth}
+              disabled={isAuthenticating}
+              className="w-full h-14 bg-white text-black rounded-full font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-100 active:scale-95 transition-all flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.15)] disabled:opacity-70 disabled:cursor-wait"
+            >
+              {isAuthenticating ? (
+                  <Loader2 className="animate-spin text-black" size={18} />
+              ) : (
+                  'GET STARTED'
+              )}
+            </button>
+            
+            <button 
+              onClick={onShowPrivacy} 
+              className="text-[10px] text-slate-600 font-bold hover:text-slate-400 transition-colors uppercase tracking-widest"
+            >
+              Privacy Policy
+            </button>
+        </div>
+      </div>
     </div>
   );
 };

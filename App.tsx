@@ -1,4 +1,3 @@
-
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import Navigation from './components/Navigation.tsx';
@@ -14,20 +13,28 @@ import OnboardingView from './views/OnboardingView.tsx';
 import PrivacyPolicyView from './views/PrivacyPolicyView.tsx';
 import { backend } from './services/mockBackend.ts';
 import { User } from './types.ts';
+import { useAppStore } from './store.ts';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('spots');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
   
+  const { user, initializeData, setUserLocation, updateUser } = useAppStore();
+
   useEffect(() => {
     const checkAuth = async () => {
       const loggedIn = await backend.isLoggedIn();
       if (loggedIn) {
-        const u = await backend.getUser();
-        setUser(u);
         setIsLoggedIn(true);
+        initializeData();
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => setUserLocation(pos.coords.latitude, pos.coords.longitude),
+                (err) => console.warn("Location access denied or failed", err),
+                { enableHighAccuracy: true }
+            );
+        }
       } else {
         setIsLoggedIn(false);
       }
@@ -37,24 +44,22 @@ const App: React.FC = () => {
 
   const handleLogin = async () => {
     const u = await backend.login();
-    setUser(u);
+    updateUser(u);
     setIsLoggedIn(true);
+    initializeData();
   };
 
   const handleLogout = async () => {
     await backend.logout();
     setIsLoggedIn(false);
-    setUser(null);
+    updateUser(null as any);
     setActiveTab('spots');
   };
 
   if (isLoggedIn === null) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-black gap-6">
-        <div className="text-white font-black italic uppercase tracking-tighter text-6xl animate-pulse">PUSH</div>
-        <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden relative">
-          <div className="absolute inset-0 bg-indigo-500 w-1/2 animate-[shimmer_1.5s_infinite]" />
-        </div>
+      <div className="h-screen flex flex-col items-center justify-center bg-black gap-4">
+        <div className="text-white font-bold tracking-widest text-sm animate-pulse">LOADING PUSH...</div>
       </div>
     );
   }
@@ -65,11 +70,9 @@ const App: React.FC = () => {
   if (user && !user.onboardingComplete) {
     return <OnboardingView onComplete={async (d) => { 
         const u = await backend.completeOnboarding(d); 
-        setUser(u); 
+        updateUser(u); 
     }} />;
   }
-
-  const isRetro = user?.retroModeEnabled;
 
   const renderContent = () => {
     switch (activeTab) {
@@ -85,24 +88,18 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className={`flex flex-col md:flex-row h-screen w-full bg-black text-slate-100 overflow-hidden relative ${isRetro ? 'retro-mode' : ''}`}>
-      {isRetro && <div className="scanlines" />}
-
-      <div className={`z-[100] transition-transform duration-300 ${activeTab === 'admin' ? 'translate-y-full absolute' : 'relative'}`}>
-        <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
-      </div>
-
-      <main className="flex-1 h-full relative overflow-hidden z-10 bg-black">
+    <div className="flex flex-col h-screen w-full bg-black text-slate-100 overflow-hidden relative">
+      <main className="flex-1 h-full relative overflow-hidden z-10">
         <div className="h-full w-full overflow-y-auto hide-scrollbar">
-            <div className="max-w-screen-2xl mx-auto min-h-full pb-24 md:pb-0">
+            <div className="max-w-screen-md mx-auto min-h-full pb-28 md:pb-0">
                 {renderContent()}
             </div>
         </div>
       </main>
 
-      {!isRetro && (
-        <div className="fixed -bottom-32 -left-32 w-64 h-64 bg-indigo-900/10 blur-[100px] pointer-events-none rounded-full z-0" />
-      )}
+      <div className="z-[100] w-full border-t border-white/5 bg-black/80 backdrop-blur-xl">
+        <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      </div>
     </div>
   );
 };

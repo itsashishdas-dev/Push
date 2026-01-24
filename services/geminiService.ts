@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 
 const FALLBACK_QUOTES = [
@@ -157,7 +156,6 @@ export const generateStateCover = async (stateName: string, landmark: string): P
   }
 };
 
-// Fixed function name typo: askAICo coach -> askAICoach
 /**
  * Handles complex coaching queries using Thinking Mode with Gemini 3 Pro.
  * Optimized for complex technique analysis and strategic spot navigation.
@@ -167,7 +165,7 @@ export const askAICoach = async (query: string) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: `You are 'Coach PUSH', an expert AI skate coach in India. 
+      contents: `You are 'Coach SPOTS', an expert AI skate coach in India. 
       You have deep knowledge of skate physics, Indian spot architecture, and the mental game of extreme sports.
       Provide detailed, reasoned, and encouraging feedback.
       

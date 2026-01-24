@@ -1,5 +1,5 @@
 
-import { Discipline, Difficulty, SkillState, Spot, Skill, VerificationStatus, Collectible, CollectibleType, Rarity, ExtendedSession, Challenge, Mentor, MentorBadge, DailyNote } from './types';
+import { Discipline, SpotCategory, Difficulty, SkillState, Spot, Skill, VerificationStatus, Collectible, CollectibleType, Rarity, ExtendedSession, Challenge, Mentor, MentorBadge, DailyNote } from './types';
 
 export const RETRO_AVATARS = [
   'https://api.dicebear.com/7.x/pixel-art/svg?seed=SkaterBoy',
@@ -28,6 +28,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-mumbai-carter',
     name: 'Carter Road Skatepark',
     type: Discipline.SKATE,
+    category: SpotCategory.PARK,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Maharashtra',
     surface: 'Smooth Concrete',
@@ -43,6 +44,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-pune-sahakar',
     name: 'Sahakarnagar Skatepark',
     type: Discipline.SKATE,
+    category: SpotCategory.PARK,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Maharashtra',
     surface: 'Concrete',
@@ -57,6 +59,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-lonavala-khandala',
     name: 'Khandala Ghat',
     type: Discipline.DOWNHILL,
+    category: SpotCategory.DOWNHILL,
     difficulty: Difficulty.ADVANCED,
     state: 'Maharashtra',
     surface: 'Asphalt',
@@ -71,6 +74,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-blr-holystoked',
     name: 'Holystoked Skatepark',
     type: Discipline.SKATE,
+    category: SpotCategory.DIY,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Karnataka',
     surface: 'Smooth Concrete',
@@ -85,6 +89,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-nandi-hills',
     name: 'Nandi Hills Descent',
     type: Discipline.DOWNHILL,
+    category: SpotCategory.DOWNHILL,
     difficulty: Difficulty.ADVANCED,
     state: 'Karnataka',
     surface: 'Smooth Asphalt',
@@ -99,6 +104,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-goa-anjuna',
     name: 'Anjuna Bowl',
     type: Discipline.SKATE,
+    category: SpotCategory.PARK,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Goa',
     surface: 'Polished Concrete',
@@ -113,6 +119,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-noida-pump',
     name: 'Noida Pump Track',
     type: Discipline.SKATE,
+    category: SpotCategory.PARK,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Delhi',
     surface: 'Asphalt',
@@ -127,6 +134,7 @@ export const MOCK_SPOTS: Spot[] = [
     id: 'spot-hyd-wallride',
     name: 'WallRide Park',
     type: Discipline.SKATE,
+    category: SpotCategory.PARK,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Telangana',
     surface: 'Concrete/Composite',
@@ -139,8 +147,9 @@ export const MOCK_SPOTS: Spot[] = [
   },
   {
     id: 'spot-kol-newtown',
-    name: 'New Town Skatepark',
+    name: 'New Town Plaza',
     type: Discipline.SKATE,
+    category: SpotCategory.STREET,
     difficulty: Difficulty.BEGINNER,
     state: 'West Bengal',
     surface: 'Concrete',
@@ -153,8 +162,9 @@ export const MOCK_SPOTS: Spot[] = [
   },
   {
     id: 'spot-raj-desert-dolphin',
-    name: 'Desert Dolphin Skatepark',
+    name: 'Desert Dolphin',
     type: Discipline.SKATE,
+    category: SpotCategory.DIY,
     difficulty: Difficulty.INTERMEDIATE,
     state: 'Rajasthan',
     surface: 'Smooth Concrete',
@@ -234,6 +244,6 @@ export const COLLECTIBLES_DATABASE: Collectible[] = [
 ];
 
 export const MENTOR_BADGE_META: Record<string, { label: string, color: string }> = {
-  [MentorBadge.CERTIFIED]: { label: 'PUSH Certified', color: 'bg-indigo-500' },
+  [MentorBadge.CERTIFIED]: { label: 'SPOTS Certified', color: 'bg-indigo-500' },
   [MentorBadge.EXPERT]: { label: 'Expert Faculty', color: 'bg-amber-500' }
 };
