@@ -179,15 +179,70 @@ export const MOCK_SPOTS: Spot[] = [
 
 export const MOCK_CHALLENGES: Challenge[] = [
   {
-    id: 'battle-balewadi-kickflip',
+    id: 'battle-carter-kickflip',
     spotId: 'spot-mumbai-carter',
     creatorId: 'u-arjun',
     creatorName: 'Arjun S.',
     title: 'Carter Road Kickflip',
-    description: 'Kickflip the gap over the planter.',
+    description: 'Kickflip the gap over the planter. Clean landing required.',
     difficulty: Difficulty.INTERMEDIATE,
     xpReward: 1200,
     completions: 14
+  },
+  {
+    id: 'battle-khandala-tuck',
+    spotId: 'spot-lonavala-khandala',
+    creatorId: 'u-vikram',
+    creatorName: 'Vikram D.',
+    title: 'Ghat Tuck Endurance',
+    description: 'Hold a perfect aerodynamic tuck for the entire 1km straight section. No breaking form.',
+    difficulty: Difficulty.ADVANCED,
+    xpReward: 2500,
+    completions: 3
+  },
+  {
+    id: 'battle-holystoked-line',
+    spotId: 'spot-blr-holystoked',
+    creatorId: 'u-sarah',
+    creatorName: 'Sarah M.',
+    title: 'Holy Transfer Line',
+    description: 'Drop in, pump the hump, and frontside air over the hip.',
+    difficulty: Difficulty.ADVANCED,
+    xpReward: 1800,
+    completions: 8
+  },
+  {
+    id: 'battle-nandi-slide',
+    spotId: 'spot-nandi-hills',
+    creatorId: 'u-dh-king',
+    creatorName: 'Speed Demon',
+    title: 'Hairpin Shutdown',
+    description: 'Execute a Coleman slide to a complete stop exactly at the marker before the first hairpin.',
+    difficulty: Difficulty.INTERMEDIATE,
+    xpReward: 1500,
+    completions: 21
+  },
+  {
+    id: 'battle-carter-dancing',
+    spotId: 'spot-mumbai-carter',
+    creatorId: 'u-dancer',
+    creatorName: 'Riya K.',
+    title: 'Promenade Flow',
+    description: 'Complete a line of Cross-step into Peter Pan into 180 Step without touching the ground.',
+    difficulty: Difficulty.INTERMEDIATE,
+    xpReward: 1000,
+    completions: 45
+  },
+  {
+    id: 'battle-wallride-pump',
+    spotId: 'spot-hyd-wallride',
+    creatorId: 'u-hyd-local',
+    creatorName: 'WallRide Crew',
+    title: 'Pump Track Time Trial',
+    description: 'Complete one full lap of the pump track in under 25 seconds without pushing.',
+    difficulty: Difficulty.BEGINNER,
+    xpReward: 800,
+    completions: 112
   }
 ];
 
@@ -233,14 +288,42 @@ export const MOCK_NOTES: DailyNote[] = [
   }
 ];
 
+// --- SKILL LIBRARY ---
+// Tier 1: Fundamentals | Tier 2: Core Tricks | Tier 3: Advanced | Tier 4: Pro
+
 export const SKILL_LIBRARY: Skill[] = [
-  { id: 'skate-ollie', name: 'Ollie', category: Discipline.SKATE, difficulty: Difficulty.BEGINNER, state: SkillState.LEARNING, tutorialUrl: 'https://www.youtube.com/watch?v=ArLl1N35ZWs' },
-  { id: 'skate-kickflip', name: 'Kickflip', category: Discipline.SKATE, difficulty: Difficulty.INTERMEDIATE, state: SkillState.LEARNING, tutorialUrl: 'https://www.youtube.com/watch?v=p35Pj_b8W9U', prerequisiteId: 'skate-ollie' },
-  { id: 'dh-footbrake', name: 'Footbrake', category: Discipline.DOWNHILL, difficulty: Difficulty.BEGINNER, state: SkillState.LEARNING, tutorialUrl: 'https://www.youtube.com/watch?v=6t2j7S7Jp4E' }
+  // --- SKATE (STREET) ---
+  { id: 'skate-ollie', name: 'Ollie', category: Discipline.SKATE, difficulty: Difficulty.BEGINNER, tier: 1, xpReward: 100, description: 'The foundation of all street skating. Snap the tail, slide the foot.', tutorialUrl: 'ArLl1N35ZWs' },
+  { id: 'skate-shuvit', name: 'Pop Shuv-it', category: Discipline.SKATE, difficulty: Difficulty.BEGINNER, tier: 1, xpReward: 150, description: 'Spin the board 180 degrees under your feet without flipping.', tutorialUrl: 'Oq9Y3i7_G_E' },
+  { id: 'skate-kickflip', name: 'Kickflip', category: Discipline.SKATE, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 300, description: 'Flip the board towards your heel. The classic flip trick.', tutorialUrl: 'p35Pj_b8W9U', prerequisiteId: 'skate-ollie' },
+  { id: 'skate-heelflip', name: 'Heelflip', category: Discipline.SKATE, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 300, description: 'Flip the board away from your toes.', tutorialUrl: '339k4XEvbxY', prerequisiteId: 'skate-ollie' },
+  { id: 'skate-5050', name: '50-50 Grind', category: Discipline.SKATE, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 350, description: 'Grind on both trucks equally on a ledge or rail.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'skate-ollie' },
+  { id: 'skate-boardslide', name: 'Boardslide', category: Discipline.SKATE, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 350, description: 'Slide the middle of your board along a rail.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'skate-ollie' },
+  { id: 'skate-treflip', name: '360 Flip', category: Discipline.SKATE, difficulty: Difficulty.ADVANCED, tier: 3, xpReward: 800, description: '360 Shuv-it + Kickflip. The Tre Bomb.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'skate-kickflip' },
+  { id: 'skate-hardflip', name: 'Hardflip', category: Discipline.SKATE, difficulty: Difficulty.ADVANCED, tier: 3, xpReward: 850, description: 'Frontside Pop Shuv + Kickflip. It looks hard because it is.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'skate-kickflip' },
+  { id: 'skate-laserflip', name: 'Laser Flip', category: Discipline.SKATE, difficulty: Difficulty.PRO, tier: 4, xpReward: 2000, description: 'Frontside 360 Shuv + Heelflip. A massive trick.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'skate-heelflip' },
+
+  // --- DOWNHILL ---
+  { id: 'dh-tuck', name: 'Speed Tuck', category: Discipline.DOWNHILL, difficulty: Difficulty.BEGINNER, tier: 1, xpReward: 100, description: 'Aerodynamic stance for stability and speed.', tutorialUrl: '6t2j7S7Jp4E' },
+  { id: 'dh-footbrake', name: 'Footbrake', category: Discipline.DOWNHILL, difficulty: Difficulty.BEGINNER, tier: 1, xpReward: 150, description: 'Essential safety skill. Stopping with your sole.', tutorialUrl: '6t2j7S7Jp4E' },
+  { id: 'dh-coleman', name: 'Coleman Slide', category: Discipline.DOWNHILL, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 400, description: 'The fundamental shutdown slide. Hand down, heelside.', tutorialUrl: '6t2j7S7Jp4E', prerequisiteId: 'dh-tuck' },
+  { id: 'dh-pushup', name: 'Push-up Slide', category: Discipline.DOWNHILL, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 400, description: 'Toeside shutdown slide using both hands.', tutorialUrl: '6t2j7S7Jp4E', prerequisiteId: 'dh-tuck' },
+  { id: 'dh-standup-180', name: 'Standup 180', category: Discipline.DOWNHILL, difficulty: Difficulty.ADVANCED, tier: 3, xpReward: 900, description: 'Sliding 180 degrees without hands touching the road.', tutorialUrl: '6t2j7S7Jp4E', prerequisiteId: 'dh-coleman' },
+  { id: 'dh-predrift', name: 'Pre-drift', category: Discipline.DOWNHILL, difficulty: Difficulty.ADVANCED, tier: 3, xpReward: 1000, description: 'Shaving speed before a corner while maintaining a line.', tutorialUrl: '6t2j7S7Jp4E', prerequisiteId: 'dh-coleman' },
+  { id: 'dh-toeside-standup', name: 'Toeside Standup', category: Discipline.DOWNHILL, difficulty: Difficulty.PRO, tier: 4, xpReward: 2500, description: 'High speed toeside slide, no hands. Pure style.', tutorialUrl: '6t2j7S7Jp4E', prerequisiteId: 'dh-standup-180' },
+
+  // --- FREESTYLE (LONGBOARD DANCING) ---
+  { id: 'fs-cross-step', name: 'Cross Step', category: Discipline.FREESTYLE, difficulty: Difficulty.BEGINNER, tier: 1, xpReward: 150, description: 'Crossing legs while carving. The basis of dancing.', tutorialUrl: '9z1j9z1j9z1' },
+  { id: 'fs-180-step', name: '180 Step', category: Discipline.FREESTYLE, difficulty: Difficulty.BEGINNER, tier: 1, xpReward: 150, description: 'Body varial while the board keeps moving.', tutorialUrl: '9z1j9z1j9z1' },
+  { id: 'fs-peter-pan', name: 'Peter Pan', category: Discipline.FREESTYLE, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 350, description: 'Crossing legs consecutively over each other.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'fs-cross-step' },
+  { id: 'fs-ghostride', name: 'Ghostride', category: Discipline.FREESTYLE, difficulty: Difficulty.INTERMEDIATE, tier: 2, xpReward: 300, description: 'Stepping off the board and jumping back on.', tutorialUrl: '9z1j9z1j9z1' },
+  { id: 'fs-tiger-claw', name: 'Tiger Claw', category: Discipline.FREESTYLE, difficulty: Difficulty.ADVANCED, tier: 3, xpReward: 800, description: 'Pop the board, catch it, spin it 360, jump back on.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'fs-ghostride' },
+  { id: 'fs-aerograb', name: 'Aero Grab', category: Discipline.FREESTYLE, difficulty: Difficulty.PRO, tier: 4, xpReward: 2000, description: 'Grab the board in mid-air during a jump.', tutorialUrl: '9z1j9z1j9z1', prerequisiteId: 'fs-tiger-claw' }
 ];
 
 export const COLLECTIBLES_DATABASE: Collectible[] = [
-  { id: 'deck_first_push', name: 'First Push', type: CollectibleType.DECK, rarity: Rarity.COMMON, imageUrl: 'https://api.dicebear.com/7.x/shapes/svg?seed=deck1', description: 'Your first set of wheels.' }
+  { id: 'deck_first_push', name: 'First Push', type: CollectibleType.DECK, rarity: Rarity.COMMON, imageUrl: 'https://api.dicebear.com/7.x/shapes/svg?seed=deck1', description: 'Your first set of wheels.' },
+  { id: 'sticker_7_day', name: 'Week Warrior', type: CollectibleType.STICKER, rarity: Rarity.RARE, imageUrl: 'https://api.dicebear.com/7.x/shapes/svg?seed=sticker7', description: '7 day streak bonus.' }
 ];
 
 export const MENTOR_BADGE_META: Record<string, { label: string, color: string }> = {

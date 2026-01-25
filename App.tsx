@@ -1,3 +1,4 @@
+
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import Navigation from './components/Navigation.tsx';
@@ -11,6 +12,7 @@ import AdminDashboardView from './views/AdminDashboardView.tsx';
 import LoginView from './views/LoginView.tsx';
 import OnboardingView from './views/OnboardingView.tsx';
 import PrivacyPolicyView from './views/PrivacyPolicyView.tsx';
+import CrewView from './views/CrewView.tsx';
 import { backend } from './services/mockBackend.ts';
 import { User } from './types.ts';
 import { useAppStore } from './store.ts';
@@ -77,11 +79,12 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'spots': return <SpotsView />;
-      case 'challenges': return <ChallengesView />;
+      case 'challenges': return <ChallengesView onNavigate={setActiveTab} />;
       case 'mentorship': return <MentorshipView />;
       case 'skills': return <SkillsView />;
       case 'journey': return <JourneyView />;
       case 'profile': return <ProfileView setActiveTab={setActiveTab} onLogout={handleLogout} />;
+      case 'crew': return <CrewView onBack={() => setActiveTab('profile')} />;
       case 'admin': return <AdminDashboardView onBack={() => setActiveTab('profile')} />;
       default: return <SpotsView />;
     }
@@ -89,16 +92,16 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-full bg-black text-slate-100 overflow-hidden relative">
-      <main className="flex-1 h-full relative overflow-hidden z-10">
-        <div className="h-full w-full overflow-y-auto hide-scrollbar">
-            <div className="max-w-screen-md mx-auto min-h-full pb-28 md:pb-0">
-                {renderContent()}
-            </div>
+      {/* Main Content Area - Delegated Scroll */}
+      <main className="flex-1 h-full relative z-10 overflow-hidden">
+        <div className="h-full w-full max-w-screen-md mx-auto">
+            {renderContent()}
         </div>
       </main>
 
-      <div className="z-[100] w-full border-t border-white/5 bg-black/80 backdrop-blur-xl">
-        <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      {/* Navigation - Always Fixed Bottom */}
+      <div className="z-[100] w-full border-t border-white/5 bg-black/80 backdrop-blur-xl absolute bottom-0 left-0">
+        <Navigation activeTab={activeTab === 'crew' ? 'challenges' : activeTab} setActiveTab={setActiveTab} />
       </div>
     </div>
   );

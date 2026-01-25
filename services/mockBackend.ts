@@ -6,7 +6,7 @@ import {
 } from '../types';
 import { MOCK_SPOTS, SKILL_LIBRARY, MOCK_CHALLENGES, MOCK_SESSIONS, MOCK_MENTORS, MOCK_NOTES } from '../constants';
 
-const DATA_VERSION = 'v1.7-beta';
+const DATA_VERSION = 'v1.8-skills-beta'; // Bumped version
 
 const STORAGE_KEYS = {
   VERSION: 'spots_db_version',
@@ -22,6 +22,12 @@ const STORAGE_KEYS = {
   CREWS: 'spots_db_crews',
   QUESTS: 'spots_db_quests'
 };
+
+const MOCK_CREWS_LIST: Crew[] = [
+  { id: 'c1', name: 'Night Riders', city: 'Mumbai', level: 5, members: ['u-2', 'u-3'], maxMembers: 10, avatar: '🌑', moto: 'Own the night.', totalXp: 12500, weeklyGoal: { description: 'Night sesh streak', current: 2, target: 5 } },
+  { id: 'c2', name: 'Hill Bombers', city: 'Pune', level: 8, members: ['u-4'], maxMembers: 5, avatar: '💣', moto: 'Speed is key.', totalXp: 45000, weeklyGoal: { description: 'Clock 80kmph', current: 65, target: 80 } },
+  { id: 'c3', name: 'Concrete Surfers', city: 'Bangalore', level: 3, members: ['u-5', 'u-6', 'u-7'], maxMembers: 12, avatar: '🌊', moto: 'Flow state only.', totalXp: 8200, weeklyGoal: { description: 'Land 50 tricks', current: 12, target: 50 } }
+];
 
 class MockBackend {
   private initDB() {
@@ -41,6 +47,8 @@ class MockBackend {
       localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
       localStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(MOCK_MENTORS));
       localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(MOCK_NOTES));
+      // Seed crews
+      localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(MOCK_CREWS_LIST));
       this.resetUser();
     }
 
@@ -53,6 +61,7 @@ class MockBackend {
     }
     if (!localStorage.getItem(STORAGE_KEYS.SESSIONS)) localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
     if (!localStorage.getItem(STORAGE_KEYS.CHALLENGES)) localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
+    if (!localStorage.getItem(STORAGE_KEYS.CREWS)) localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(MOCK_CREWS_LIST));
   }
 
   private resetUser() {
@@ -70,6 +79,8 @@ class MockBackend {
       locker: [],
       completedChallengeIds: [],
       pendingSkills: [],
+      landedSkills: [], // New
+      masteredSkills: [], // New
       isMentor: false,
       friends: [],
       friendRequests: [],
@@ -154,7 +165,8 @@ class MockBackend {
       spotType: data.spotType!,
       participants: [user.id],
       reminderSet: data.reminderSet,
-      notes: data.notes || ''
+      notes: data.notes || '',
+      intent: data.intent || 'Chill'
     };
     sessions.push(newSession);
     localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
@@ -171,6 +183,21 @@ class MockBackend {
     return this.safeParse(STORAGE_KEYS.NOTES, MOCK_NOTES);
   }
 
+  async saveDailyNote(text: string): Promise<DailyNote> {
+    const user = await this.getUser();
+    const notes = await this.getDailyNotes();
+    const newNote: DailyNote = {
+        id: `note-${Date.now()}`,
+        userId: user.id,
+        date: new Date().toISOString().split('T')[0],
+        text: text,
+        timestamp: new Date().toISOString()
+    };
+    notes.unshift(newNote);
+    localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
+    return newNote;
+  }
+
   async updateVerification(spotId: string, status: VerificationStatus): Promise<void> {
     const spots = await this.getSpots();
     const index = spots.findIndex((s: Spot) => s.id === spotId);
@@ -181,14 +208,32 @@ class MockBackend {
     }
   }
 
+  // --- SKILL PROGRESSION ---
+
+  async markSkillLanded(skillId: string): Promise<User> {
+      const user = await this.getUser();
+      if (!user.landedSkills) user.landedSkills = [];
+      
+      if (!user.landedSkills.includes(skillId)) {
+          user.landedSkills.push(skillId);
+          user.xp += 150; // Small reward
+          return this.updateUser(user);
+      }
+      return user;
+  }
+
   async masterSkill(skillId: string): Promise<User> {
     const user = await this.getUser();
-    if (!user.locker.includes(skillId)) {
-        user.locker.push(skillId);
-        user.xp += 500;
+    if (!user.masteredSkills) user.masteredSkills = [];
+    
+    if (!user.masteredSkills.includes(skillId)) {
+        user.masteredSkills.push(skillId);
+        // Also ensure it's marked as landed
+        if (!user.landedSkills.includes(skillId)) user.landedSkills.push(skillId);
+        
+        user.xp += 500; // Big reward
         user.masteredCount += 1;
-        // Remove from pending if it was there
-        user.pendingSkills = user.pendingSkills.filter(id => id !== skillId);
+        
         return this.updateUser(user);
     }
     return user;
@@ -196,7 +241,7 @@ class MockBackend {
 
   async submitSkillProof(skillId: string): Promise<User> {
     const user = await this.getUser();
-    if (!user.pendingSkills.includes(skillId) && !user.locker.includes(skillId)) {
+    if (!user.pendingSkills.includes(skillId) && !user.masteredSkills.includes(skillId)) {
       user.pendingSkills.push(skillId);
       return this.updateUser(user);
     }
@@ -314,7 +359,9 @@ class MockBackend {
       name: skill.name || 'Unnamed Trick',
       category: skill.category || Discipline.SKATE,
       difficulty: skill.difficulty || Difficulty.BEGINNER,
-      state: SkillState.LEARNING,
+      tier: 1,
+      description: 'Custom user skill',
+      xpReward: 100,
       tutorialUrl: skill.tutorialUrl || '',
       isCustom: true
     };
@@ -323,9 +370,34 @@ class MockBackend {
     return newSkill;
   }
 
+  // --- CREW SYSTEM ---
+
+  async getAllCrews(): Promise<Crew[]> {
+    this.initDB();
+    return this.safeParse(STORAGE_KEYS.CREWS, MOCK_CREWS_LIST);
+  }
+
   async getUserCrew(crewId: string): Promise<Crew | null> {
-    const crews = this.safeParse(STORAGE_KEYS.CREWS, []);
+    const crews = await this.getAllCrews();
     return crews.find((c: Crew) => c.id === crewId) || null;
+  }
+
+  async joinCrew(crewId: string): Promise<Crew> {
+      const user = await this.getUser();
+      const crews = await this.getAllCrews();
+      const index = crews.findIndex(c => c.id === crewId);
+      
+      if (index !== -1) {
+          if (!crews[index].members.includes(user.id)) {
+              crews[index].members.push(user.id);
+              localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
+              
+              user.crewId = crewId;
+              await this.updateUser(user);
+          }
+          return crews[index];
+      }
+      throw new Error("Crew not found");
   }
 
   async getCrewMembers(memberIds: string[]): Promise<User[]> {
@@ -334,7 +406,7 @@ class MockBackend {
   }
 
   async updateCrewSession(crewId: string, text: string): Promise<Crew> {
-    const crews = this.safeParse(STORAGE_KEYS.CREWS, []);
+    const crews = await this.getAllCrews();
     const index = crews.findIndex((c: Crew) => c.id === crewId);
     if (index !== -1) {
       const user = await this.getUser();
@@ -349,19 +421,23 @@ class MockBackend {
     throw new Error("Crew not found");
   }
 
-  async createCrew(name: string, city: string): Promise<Crew> {
+  async createCrew(data: { name: string, city: string, moto: string, homeSpotId: string, homeSpotName: string, avatar: string, maxMembers: number }): Promise<Crew> {
     const user = await this.getUser();
     const newCrew: Crew = {
       id: `crew-${Date.now()}`,
-      name,
-      city,
-      avatar: '🛹',
+      name: data.name,
+      city: data.city,
+      moto: data.moto,
+      avatar: data.avatar,
+      homeSpotId: data.homeSpotId,
+      homeSpotName: data.homeSpotName,
+      maxMembers: data.maxMembers,
       members: [user.id],
       level: 1,
       totalXp: 0,
       weeklyGoal: { description: 'Ride together', current: 0, target: 5 }
     };
-    const crews = this.safeParse(STORAGE_KEYS.CREWS, []);
+    const crews = await this.getAllCrews();
     crews.push(newCrew);
     localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
     

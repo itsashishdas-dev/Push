@@ -1,7 +1,7 @@
 
-import React from 'react';
-import { MapPin, Users, Info, Star, Droplets, AlertTriangle } from 'lucide-react';
-import { Spot, Discipline, VerificationStatus, SpotStatus } from '../types';
+import React, { memo } from 'react';
+import { MapPin, Users, Info, Star, Droplets, Zap, Activity, ChevronRight } from 'lucide-react';
+import { Spot, Discipline, SpotStatus } from '../types';
 import { triggerHaptic } from '../utils/haptics';
 
 interface SpotCardProps {
@@ -9,90 +9,95 @@ interface SpotCardProps {
   onClick: () => void;
 }
 
-const SpotCard: React.FC<SpotCardProps> = ({ spot, onClick }) => {
+const SpotCard: React.FC<SpotCardProps> = memo(({ spot, onClick }) => {
   const isSkate = spot.type === Discipline.SKATE;
+  const hasActiveSessions = spot.sessions && spot.sessions.length > 0;
   
   const handleClick = () => {
-    triggerHaptic('light');
+    triggerHaptic('medium');
     onClick();
   };
 
   const mainImage = spot.images?.[0] || `https://picsum.photos/seed/${spot.id}/400/400`;
   
-  // Status Colors
+  // Status Logic
   const statusColor = 
     spot.status === SpotStatus.WET ? 'text-blue-400' :
     spot.status === SpotStatus.CROWDED ? 'text-amber-400' :
     'text-green-400';
 
+  const statusBorder = 
+    spot.status === SpotStatus.WET ? 'border-blue-500/20' :
+    spot.status === SpotStatus.CROWDED ? 'border-amber-500/20' :
+    'border-green-500/20';
+
   const statusIcon = 
     spot.status === SpotStatus.WET ? <Droplets size={10} className={statusColor} /> :
     spot.status === SpotStatus.CROWDED ? <Users size={10} className={statusColor} /> :
-    <div className={`w-2 h-2 rounded-full bg-green-500 animate-pulse`} />;
+    <Zap size={10} className={statusColor} />;
 
   const statusText = 
-    spot.status === SpotStatus.WET ? 'Wet Surfaces' :
-    spot.status === SpotStatus.CROWDED ? 'High Activity' :
-    'Prime Conditions';
+    spot.status === SpotStatus.WET ? 'WET' :
+    spot.status === SpotStatus.CROWDED ? 'HIGH TRAFFIC' :
+    'PRIME';
 
   return (
     <div 
-      className="bg-slate-900 border border-slate-800 rounded-[2rem] overflow-hidden flex flex-row h-32 active:scale-[0.98] transition-all duration-200 shadow-lg cursor-pointer group"
+      className="group relative w-full h-40 bg-[#0e0e0e] border border-white/5 rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.1)] active:scale-95 cursor-pointer flex flex-col shadow-2xl"
       onClick={handleClick}
     >
-      {/* Image Thumb */}
-      <div className="w-32 h-full relative shrink-0">
-        <img 
-          src={mainImage} 
-          alt={spot.name} 
-          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-slate-900" />
-        <div className="absolute top-2 left-2">
-            <div className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wide backdrop-blur-md ${isSkate ? 'bg-indigo-500/90 text-white' : 'bg-purple-500/90 text-white'}`}>
-                {spot.type}
-            </div>
-        </div>
+      {/* Background Image Layer */}
+      <div className="absolute inset-0 z-0">
+          <img 
+            src={mainImage} 
+            alt={spot.name} 
+            loading="lazy"
+            className="w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-all duration-500 grayscale group-hover:grayscale-0"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/80 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent" />
       </div>
 
-      {/* Content */}
-      <div className="flex-1 p-4 flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-start">
-               <h3 className="text-sm font-black text-white leading-tight line-clamp-1 uppercase italic tracking-tight">
-                  {spot.name}
-               </h3>
-               {spot.distance && <span className="text-[9px] font-bold text-slate-500">{(spot.distance / 1000).toFixed(1)}km</span>}
-            </div>
+      {/* Top Badge Layer */}
+      <div className="relative z-10 px-4 pt-3 flex justify-between items-start">
+          <div className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border backdrop-blur-md flex items-center gap-1.5 ${statusBorder} bg-black/40`}>
+              {statusIcon}
+              <span className={statusColor}>{statusText}</span>
+          </div>
+          
+          {hasActiveSessions && (
+             <div className="flex items-center justify-center w-5 h-5 bg-green-500/20 rounded-full border border-green-500/30 shrink-0 animate-pulse backdrop-blur-sm">
+                 <Users size={10} className="text-green-400" />
+             </div>
+          )}
+      </div>
+
+      {/* Content Section */}
+      <div className="relative z-10 flex-1 p-4 flex flex-col justify-end">
+          <div className="space-y-1.5">
+            <h3 className="text-sm font-black italic text-white uppercase leading-none tracking-tight group-hover:text-indigo-400 transition-colors line-clamp-1 pr-4">
+                {spot.name}
+            </h3>
             
-            <div className="flex items-center gap-1 mt-1">
-                <MapPin size={10} className="text-slate-500" />
-                <span className="text-[10px] text-slate-400 font-medium truncate max-w-[120px]">{spot.location.address}</span>
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span className="flex items-center gap-1">
+                       <MapPin size={10} className="text-indigo-500" /> 
+                       {(spot.distance ? (spot.distance / 1000).toFixed(1) : '?.?')} KM
+                    </span>
+                    <span className="w-0.5 h-2 bg-slate-700" />
+                    <span className="truncate max-w-[80px] text-slate-500">
+                       {spot.state}
+                    </span>
+                </div>
             </div>
           </div>
-
-          <div className="flex items-end justify-between">
-              <div className="flex items-center gap-2 bg-slate-950/50 px-2 py-1 rounded-lg border border-white/5">
-                 {statusIcon}
-                 <span className={`text-[9px] font-bold uppercase tracking-wide ${statusColor}`}>
-                    {statusText}
-                 </span>
-              </div>
-              
-              <div className="flex gap-1">
-                 {spot.rating > 4.5 && (
-                    <div className="w-6 h-6 bg-yellow-500/10 rounded-full flex items-center justify-center border border-yellow-500/20">
-                        <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                    </div>
-                 )}
-                 <div className="w-6 h-6 bg-slate-800 rounded-full flex items-center justify-center text-slate-400 border border-slate-700">
-                    <Info size={12} />
-                 </div>
-              </div>
-          </div>
       </div>
+      
+      {/* Selection Highlight */}
+      <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
     </div>
   );
-};
+});
 
 export default SpotCard;

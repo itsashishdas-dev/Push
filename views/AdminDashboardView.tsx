@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   ChevronLeft, 
@@ -71,7 +72,7 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="pb-24 pt-6 md:pb-10 space-y-8 px-4 animate-view min-h-full">
+    <div className="h-full overflow-y-auto hide-scrollbar pb-24 pt-6 md:pb-10 space-y-8 px-4 animate-view min-h-full">
       {/* Header */}
       <header className="flex items-center gap-4">
         <button 

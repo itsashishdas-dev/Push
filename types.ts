@@ -1,23 +1,27 @@
 
 export enum Discipline {
   SKATE = 'skate',
-  DOWNHILL = 'downhill'
+  DOWNHILL = 'downhill',
+  FREESTYLE = 'freestyle'
 }
 
 export enum SpotCategory {
   STREET = 'street',
   PARK = 'park',
   DIY = 'diy',
-  DOWNHILL = 'downhill'
+  DOWNHILL = 'downhill',
+  FLATGROUND = 'flatground'
 }
 
 export enum Difficulty {
   BEGINNER = 'beginner',
   INTERMEDIATE = 'intermediate',
-  ADVANCED = 'advanced'
+  ADVANCED = 'advanced',
+  PRO = 'pro'
 }
 
 export enum SkillState {
+  LOCKED = 'locked',
   LEARNING = 'learning',
   LANDED = 'landed',
   MASTERED = 'mastered'
@@ -86,8 +90,12 @@ export interface FriendRequest {
 export interface Crew {
   id: string;
   name: string;
+  moto?: string;
   city: string;
   avatar: string;
+  homeSpotId?: string;
+  homeSpotName?: string;
+  maxMembers?: number;
   members: string[];
   level: number;
   totalXp: number;
@@ -108,6 +116,7 @@ export interface MentorApplication {
   style: string;
   rate: number;
   videoUrl: string;
+  thumbnailUrl?: string;
 }
 
 export interface Booking {
@@ -148,6 +157,8 @@ export interface User {
   locker: string[];
   completedChallengeIds: string[];
   pendingSkills: string[]; // IDs of skills waiting for verification
+  landedSkills: string[]; // IDs of skills marked as landed (no video)
+  masteredSkills: string[]; // IDs of skills with video proof
   isMentor: boolean;
   friends: string[];
   friendRequests: FriendRequest[];
@@ -163,6 +174,10 @@ export interface User {
   dateOfBirth?: string;
   instagramHandle?: string;
   equippedDeckId?: string;
+  deckDetails?: {
+    skate?: string;
+    downhill?: string;
+  };
 }
 
 export interface Spot {
@@ -197,6 +212,7 @@ export interface Review {
   rating: number;
   text: string;
   date: string;
+  time?: string;
 }
 
 export interface ExtendedSession {
@@ -212,6 +228,7 @@ export interface ExtendedSession {
   participants: string[];
   reminderSet?: boolean;
   notes?: string;
+  intent?: string;
 }
 
 export interface Challenge {
@@ -246,7 +263,9 @@ export interface Skill {
   name: string;
   category: Discipline;
   difficulty: Difficulty;
-  state: SkillState;
+  tier: 1 | 2 | 3 | 4; // Added tier for tree structure
+  description: string;
+  xpReward: number;
   tutorialUrl: string;
   prerequisiteId?: string;
   isCustom?: boolean;
