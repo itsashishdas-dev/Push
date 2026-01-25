@@ -1,31 +1,46 @@
 
 import { create } from 'zustand';
 import { backend } from './services/mockBackend.ts';
-import { User, Spot, ExtendedSession, Challenge, Skill, Quest, Discipline, DailyNote, Mentor } from './types.ts';
+import { User, Spot, ExtendedSession, Challenge, Skill, Quest, Discipline, DailyNote, Mentor, AppView, ModalType } from './types.ts';
 import { SKILL_LIBRARY } from './constants.tsx';
 
 interface AppState {
-  // Data State
+  // --- CORE DATA ---
   user: User | null;
   location: { lat: number; lng: number } | null;
   spots: Spot[];
   sessions: ExtendedSession[];
   challenges: (Challenge & { spotName: string })[];
   quests: Quest[];
-  skills: Skill[]; // Merged library + custom
+  skills: Skill[];
   mentors: Mentor[];
   notes: DailyNote[];
   
-  // UI State
+  // --- UI STATE (Single Source of Truth) ---
+  currentView: AppView;
+  activeModal: ModalType;
+  selectedSpot: Spot | null;
+  selectedSkill: Skill | null;
+  
+  // --- STATUS ---
   isLoading: boolean;
   error: string | null;
   
-  // Actions
+  // --- ACTIONS ---
   initializeData: () => Promise<void>;
   setUserLocation: (lat: number, lng: number) => void;
+  updateUser: (user: User) => void;
+  
+  // UI Actions
+  setView: (view: AppView) => void;
+  openModal: (type: ModalType, data?: any) => void;
+  closeModal: () => void;
+  selectSpot: (spot: Spot | null) => void;
+  selectSkill: (skill: Skill | null) => void;
+  
+  // Data Actions
   refreshSpots: () => Promise<void>;
   refreshSessions: () => Promise<void>;
-  updateUser: (user: User) => void;
   addNewSpot: (spotData: Partial<Spot>) => Promise<Spot>;
 }
 
@@ -39,13 +54,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   skills: [],
   mentors: [],
   notes: [],
+  
+  // UI Defaults
+  currentView: 'MAP',
+  activeModal: 'NONE',
+  selectedSpot: null,
+  selectedSkill: null,
+  
   isLoading: true,
   error: null,
 
   initializeData: async () => {
     set({ isLoading: true, error: null });
     try {
-      console.log("Store: Initializing Data...");
       const [user, spots, sessions, rawChallenges, quests, customSkills, mentors, notes] = await Promise.all([
         backend.getUser(),
         backend.getSpots(),
@@ -57,13 +78,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         backend.getDailyNotes()
       ]);
 
-      // Enrich challenges with spot names immediately
       const enrichedChallenges = rawChallenges.map(c => {
         const spot = spots.find(s => s.id === c.spotId);
         return { ...c, spotName: spot ? spot.name : 'Unknown Spot' };
       });
 
-      // Merge skills
       const allSkills = [...SKILL_LIBRARY, ...customSkills];
 
       set({ 
@@ -77,18 +96,47 @@ export const useAppStore = create<AppState>((set, get) => ({
         notes,
         isLoading: false 
       });
-      console.log("Store: Initialization Complete", { user, spotsCount: spots.length });
     } catch (err) {
-      console.error("Store: Initialization Failed", err);
-      set({ error: "Failed to load application data. Check connection.", isLoading: false });
+      set({ error: "System Failure. Data uplink severed.", isLoading: false });
     }
   },
 
   setUserLocation: (lat, lng) => {
-    console.log("Store: Updating Location", { lat, lng });
     set({ location: { lat, lng } });
   },
   
+  updateUser: (user: User) => {
+      set({ user });
+  },
+
+  // --- UI ACTIONS ---
+  setView: (view: AppView) => {
+    // When switching views, ensure we reset overlay states if needed
+    set({ currentView: view, activeModal: 'NONE' });
+  },
+
+  openModal: (type: ModalType, data?: any) => {
+    set({ activeModal: type });
+    // Handle data passing if strictly needed, usually store selection is enough
+  },
+
+  closeModal: () => {
+    set({ activeModal: 'NONE' });
+  },
+
+  selectSpot: (spot: Spot | null) => {
+    set({ selectedSpot: spot });
+    if (spot) {
+      // If we select a spot, we often want to show details immediately
+      // But we let the UI decide if it opens a sheet or just highlights
+    }
+  },
+
+  selectSkill: (skill: Skill | null) => {
+    set({ selectedSkill: skill });
+  },
+
+  // --- DATA ACTIONS ---
   refreshSpots: async () => {
       const spots = await backend.getSpots();
       set({ spots });
@@ -97,17 +145,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshSessions: async () => {
       const sessions = await backend.getAllSessions();
       set({ sessions });
-      // Spots depend on sessions for badges, so refresh spots too
       get().refreshSpots();
-  },
-
-  updateUser: (user: User) => {
-      set({ user });
   },
 
   addNewSpot: async (spotData: Partial<Spot>) => {
       const newSpot = await backend.addSpot(spotData);
-      // Refresh spots to ensure state consistency
       await get().refreshSpots();
       return newSpot;
   }

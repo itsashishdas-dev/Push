@@ -74,9 +74,10 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
     }
   };
 
-  const navigateToCrew = () => {
+  const navigateToCrew = (e?: React.MouseEvent) => {
+      e?.stopPropagation(); // Prevent duplicate bubbling if clicking specific elements
       triggerHaptic('medium');
-      if (onNavigate) onNavigate('crew');
+      if (onNavigate) onNavigate('CREW');
   };
 
   return (
@@ -131,7 +132,10 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
                           <p className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Find or form a crew</p>
                       </div>
                   </div>
-                  <button className="px-4 py-2 bg-white text-black rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2">
+                  <button 
+                    onClick={navigateToCrew}
+                    className="px-4 py-2 bg-white text-black rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 group-hover:scale-105 transition-transform"
+                  >
                       <Plus size={12} strokeWidth={3} /> Join
                   </button>
               </div>

@@ -4,8 +4,8 @@ import { useAppStore } from '../store';
 import { backend } from '../services/mockBackend';
 import { Crew } from '../types';
 import { 
-  Users, Shield, Target, MapPin, Zap, ChevronLeft, 
-  Crown, Plus, Activity, Settings, Flag, Search, Check, Loader2
+  Users, Shield, Target, MapPin, ChevronLeft, 
+  Crown, Plus, Settings, Search, Loader2, LogOut, CheckCircle2, User as UserIcon, X, Check
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
@@ -17,13 +17,14 @@ interface CrewViewProps {
 const CREW_AVATARS = ['🛹', '🔥', '⚡', '🌊', '💀', '👽', '🦖', '👹'];
 
 const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
-  const { user, spots, updateUser } = useAppStore();
+  const { user, spots, updateUser, setUserLocation } = useAppStore();
   const [crew, setCrew] = useState<Crew | null>(null);
   const [availableCrews, setAvailableCrews] = useState<Crew[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'browse' | 'create' | 'dashboard'>('browse');
   const [searchQuery, setSearchQuery] = useState('');
-  const [joiningCrewId, setJoiningCrewId] = useState<string | null>(null);
+  const [requestingCrewId, setRequestingCrewId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -41,6 +42,7 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
         setCrew(c);
         setViewMode('dashboard');
       } else {
+        setCrew(null);
         const all = await backend.getAllCrews();
         setAvailableCrews(all);
         setViewMode('browse');
@@ -48,7 +50,7 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
       setIsLoading(false);
     };
     init();
-  }, [user]);
+  }, [user?.crewId]);
 
   const handleCreateCrew = async () => {
     if (!formData.name || !formData.homeSpotId) return;
@@ -73,24 +75,50 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
     setViewMode('dashboard');
   };
 
-  const handleJoinCrew = async (crewId: string) => {
-      setJoiningCrewId(crewId);
+  const handleRequestJoin = async (crewId: string) => {
+      setRequestingCrewId(crewId);
       triggerHaptic('medium');
       try {
-          // Simulate network handshake/encryption
-          await new Promise(resolve => setTimeout(resolve, 800));
-
-          const joined = await backend.joinCrew(crewId);
-          if (user) updateUser({ ...user, crewId: joined.id });
-          setCrew(joined);
-          playSound('success');
-          setViewMode('dashboard');
+          await new Promise(resolve => setTimeout(resolve, 600)); // Network sim
+          await backend.requestJoinCrew(crewId);
+          
+          // Refresh list to show updated status
+          const all = await backend.getAllCrews();
+          setAvailableCrews(all);
+          
+          triggerHaptic('success');
       } catch (e) {
           triggerHaptic('error');
-          alert('Failed to join crew. Unit might be locked or network unstable.');
       } finally {
-          setJoiningCrewId(null);
+          setRequestingCrewId(null);
       }
+  };
+
+  const handleReviewRequest = async (userId: string, approved: boolean) => {
+      if (!crew) return;
+      triggerHaptic('medium');
+      const updatedCrew = await backend.respondToJoinRequest(crew.id, userId, approved);
+      setCrew(updatedCrew);
+      playSound(approved ? 'success' : 'click');
+  };
+
+  const handleLeaveCrew = async () => {
+      if (!confirm("Confirm removal from Unit? This action will reset your crew reputation.")) return;
+      triggerHaptic('heavy');
+      
+      const updatedUser = await backend.leaveCrew();
+      
+      // Critical: Update local state immediately before global state to prevent race conditions in UI
+      setCrew(null);
+      setShowSettings(false);
+      setViewMode('browse');
+      
+      updateUser(updatedUser);
+      playSound('error'); // Dismantle sound
+      
+      // Refresh available crews
+      const all = await backend.getAllCrews();
+      setAvailableCrews(all);
   };
 
   if (isLoading) return <div className="h-full bg-black flex items-center justify-center"><div className="text-slate-500 font-bold uppercase tracking-widest animate-pulse">Syncing Unit Data...</div></div>;
@@ -136,13 +164,14 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
             <div className="flex-1 overflow-y-auto px-6 pb-32 hide-scrollbar space-y-3">
                 {filtered.map(c => {
                     const isFull = c.members.length >= (c.maxMembers || 10);
-                    const isJoining = joiningCrewId === c.id;
+                    const isRequested = user && c.requests && c.requests.includes(user.id);
+                    const isProcessing = requestingCrewId === c.id;
                     
                     return (
                         <div key={c.id} className="bg-[#0b0c10] border border-white/10 rounded-3xl p-5 relative overflow-hidden group hover:border-white/20 transition-colors">
                             <div className="flex justify-between items-start mb-3">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl border border-white/5">
+                                    <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-3xl border border-white/5 shadow-inner">
                                         {c.avatar}
                                     </div>
                                     <div>
@@ -159,25 +188,27 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                                 </span>
                             </div>
                             
-                            <p className="text-xs text-slate-400 font-medium italic mb-4 pl-1">"{c.moto}"</p>
+                            <p className="text-xs text-slate-400 font-medium italic mb-4 pl-1 border-l-2 border-slate-700">"{c.moto}"</p>
 
                             <button 
-                                onClick={() => !isFull && !isJoining && handleJoinCrew(c.id)}
-                                disabled={isFull || isJoining}
+                                onClick={() => !isFull && !isRequested && !isProcessing && handleRequestJoin(c.id)}
+                                disabled={isFull || isRequested || isProcessing}
                                 className={`w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                                    isFull 
-                                    ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800' 
-                                    : 'bg-white text-black hover:bg-slate-200 shadow-lg disabled:opacity-70 disabled:cursor-wait'
+                                    isRequested
+                                    ? 'bg-slate-800 text-indigo-400 border border-indigo-500/30 cursor-default'
+                                    : isFull 
+                                        ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-slate-800' 
+                                        : 'bg-white text-black hover:bg-slate-200 shadow-lg disabled:opacity-70 disabled:cursor-wait'
                                 }`}
                             >
-                                {isJoining && <Loader2 className="animate-spin" size={14} />}
-                                {isJoining ? 'Establishing Link...' : isFull ? 'Unit Full' : 'Request Access'}
+                                {isProcessing ? <Loader2 className="animate-spin" size={14} /> : null}
+                                {isProcessing ? 'Sending Signal...' : isRequested ? 'Request Pending' : isFull ? 'Unit Full' : 'Request Access'}
                             </button>
                         </div>
                     );
                 })}
                 {filtered.length === 0 && (
-                    <div className="py-12 text-center text-slate-600 font-mono text-xs">
+                    <div className="py-12 text-center text-slate-600 font-mono text-xs border border-white/5 rounded-3xl bg-slate-900/20">
                         NO UNITS FOUND IN SECTOR.
                     </div>
                 )}
@@ -186,87 +217,129 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
       );
   }
 
-  // --- CREATE MODE ---
+  // --- CREATE MODE (Redesigned) ---
   if (!crew && viewMode === 'create') {
     return (
-      <div className="h-full flex flex-col bg-black animate-view pt-safe-top overflow-y-auto hide-scrollbar">
-         <div className="p-6">
-            <button onClick={() => setViewMode('browse')} className="flex items-center gap-2 text-slate-500 mb-6 active:scale-95 hover:text-white transition-colors">
-               <ChevronLeft size={20} /> Cancel
+      <div className="h-full flex flex-col bg-[#050505] animate-view pt-safe-top overflow-hidden relative font-sans">
+         {/* Background FX */}
+         <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+         <div className="absolute inset-0 z-0 pointer-events-none opacity-20" style={{ background: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06))', backgroundSize: '100% 2px, 3px 100%' }}></div>
+
+         {/* Header */}
+         <div className="relative z-10 px-6 pt-4 pb-2 shrink-0">
+            <button onClick={() => setViewMode('browse')} className="flex items-center gap-2 text-slate-500 mb-6 active:scale-95 hover:text-white transition-colors text-[10px] font-bold uppercase tracking-widest">
+               <ChevronLeft size={16} /> Cancel
             </button>
-            <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter mb-2">Form Unit</h1>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mb-8">Establish your crew identity.</p>
+            
+            <h1 className="text-6xl font-black italic uppercase text-white tracking-tighter mb-2 leading-[0.85] drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">
+                Form<br/>Unit
+            </h1>
+            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.25em] ml-1">
+                Establish your crew identity.
+            </p>
+         </div>
 
-            <div className="space-y-6">
-               <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Unit Name</label>
-                  <input 
-                    type="text" 
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    placeholder="E.g. NIGHT RIDERS"
-                    className="w-full bg-slate-900 border-b border-white/20 p-4 text-xl font-black italic uppercase text-white placeholder:text-slate-700 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-               </div>
+         {/* Scrollable Form Area */}
+         <div className="flex-1 overflow-y-auto hide-scrollbar px-6 py-6 relative z-10 space-y-8">
+            
+            {/* Unit Name */}
+            <div className="space-y-2 group">
+                <label className="text-[9px] font-black uppercase text-indigo-500 tracking-widest flex items-center gap-2 group-focus-within:text-white transition-colors">
+                    Unit Name
+                </label>
+                <div className="relative">
+                    <input 
+                        type="text" 
+                        value={formData.name}
+                        onChange={e => setFormData({...formData, name: e.target.value})}
+                        placeholder="E.g. NIGHT RIDERS"
+                        className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-sm font-black italic uppercase text-white placeholder:text-slate-700 placeholder:not-italic focus:outline-none focus:border-indigo-500 focus:bg-[#111] transition-all"
+                    />
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-indigo-500 rounded-full opacity-0 group-focus-within:opacity-100 transition-opacity" />
+                </div>
+            </div>
 
-               <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Moto / Ethos</label>
-                  <input 
+            {/* Moto */}
+            <div className="space-y-2 group">
+                <label className="text-[9px] font-black uppercase text-indigo-500 tracking-widest flex items-center gap-2 group-focus-within:text-white transition-colors">
+                    Moto / Ethos
+                </label>
+                <input 
                     type="text" 
                     value={formData.moto}
                     onChange={e => setFormData({...formData, moto: e.target.value})}
                     placeholder="E.g. SKATE AND DESTROY"
-                    className="w-full bg-slate-900 border-b border-white/20 p-4 text-sm font-bold uppercase text-white placeholder:text-slate-700 focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
-               </div>
-
-               <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Home Turf</label>
-                  <select 
-                     value={formData.homeSpotId}
-                     onChange={e => setFormData({...formData, homeSpotId: e.target.value})}
-                     className="w-full bg-slate-900 border border-white/20 rounded-xl p-4 text-sm font-bold text-white focus:outline-none focus:border-indigo-500"
-                  >
-                     <option value="">Select Local Spot</option>
-                     {spots.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.location.address})</option>
-                     ))}
-                  </select>
-               </div>
-
-               <div className="space-y-2">
-                   <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest">Emblem</label>
-                   <div className="flex gap-3 overflow-x-auto pb-2 hide-scrollbar">
-                      {CREW_AVATARS.map(av => (
-                         <button 
-                           key={av}
-                           onClick={() => setFormData({...formData, avatar: av})}
-                           className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-slate-900 border transition-all ${formData.avatar === av ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)] scale-110' : 'border-slate-800 opacity-50'}`}
-                         >
-                            {av}
-                         </button>
-                      ))}
-                   </div>
-               </div>
-               
-               <div className="pt-4">
-                  <button 
-                    onClick={handleCreateCrew}
-                    disabled={!formData.name || !formData.homeSpotId}
-                    className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-[0.2em] text-sm shadow-xl hover:bg-indigo-500 disabled:opacity-50 active:scale-95 transition-all"
-                  >
-                     Initialize Crew
-                  </button>
-               </div>
+                    className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-xs font-bold uppercase text-white placeholder:text-slate-700 focus:outline-none focus:border-indigo-500 focus:bg-[#111] transition-all"
+                />
             </div>
+
+            {/* Home Turf */}
+            <div className="space-y-2 group">
+                <label className="text-[9px] font-black uppercase text-indigo-500 tracking-widest flex items-center gap-2">
+                    Home Turf
+                </label>
+                <div className="relative">
+                    <select 
+                        value={formData.homeSpotId}
+                        onChange={e => setFormData({...formData, homeSpotId: e.target.value})}
+                        className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-xs font-bold text-white focus:outline-none focus:border-indigo-500 focus:bg-[#111] appearance-none uppercase"
+                    >
+                        <option value="" className="text-slate-700">Select Local Spot</option>
+                        {spots.map(s => (
+                            <option key={s.id} value={s.id}>{s.name} ({s.location.address})</option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <MapPin size={14} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Emblem */}
+            <div className="space-y-3">
+                <label className="text-[9px] font-black uppercase text-indigo-500 tracking-widest">Emblem</label>
+                <div className="flex gap-3 overflow-x-auto pb-4 hide-scrollbar">
+                    {CREW_AVATARS.map(av => (
+                        <button 
+                        key={av}
+                        onClick={() => { setFormData({...formData, avatar: av}); triggerHaptic('light'); }}
+                        className={`
+                            w-14 h-14 rounded-2xl flex items-center justify-center text-2xl transition-all duration-300 relative overflow-hidden group shrink-0
+                            ${formData.avatar === av 
+                                ? 'bg-indigo-600 border border-indigo-400 shadow-[0_0_20px_rgba(99,102,241,0.5)] scale-105 z-10' 
+                                : 'bg-[#0b0c10] border border-white/10 opacity-60 hover:opacity-100 hover:border-white/30'
+                            }
+                        `}
+                        >
+                            <span className="relative z-10 group-hover:scale-125 transition-transform duration-300">{av}</span>
+                            {formData.avatar === av && <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />}
+                        </button>
+                    ))}
+                </div>
+            </div>
+         </div>
+
+         {/* Footer Action */}
+         <div className="p-6 pt-2 bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent relative z-20 shrink-0">
+            <button 
+                onClick={handleCreateCrew}
+                disabled={!formData.name || !formData.homeSpotId}
+                className="w-full h-16 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black uppercase tracking-[0.2em] text-sm shadow-[0_0_30px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] transition-all flex items-center justify-center gap-2 group relative overflow-hidden"
+            >
+                {/* Button Shine */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <span className="relative z-10">Initialize Crew</span>
+            </button>
          </div>
       </div>
     );
   }
 
-  // --- CREW DASHBOARD (Existing view) ---
+  // --- CREW DASHBOARD ---
   if (crew) {
       const memberPercentage = Math.round((crew.members.length / (crew.maxMembers || 10)) * 100);
+      const isAdmin = user && crew.adminIds && crew.adminIds.includes(user.id);
+      const pendingRequests = crew.requests || [];
 
       return (
         <div className="h-full flex flex-col bg-black animate-view overflow-y-auto hide-scrollbar pb-32">
@@ -280,10 +353,20 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                    <button onClick={onBack} className="p-2 bg-black/30 backdrop-blur rounded-full text-white border border-white/10 active:scale-95 transition-transform">
                        <ChevronLeft size={24} />
                    </button>
-                   <button className="p-2 bg-black/30 backdrop-blur rounded-full text-white border border-white/10">
+                   <button onClick={() => setShowSettings(!showSettings)} className={`p-2 backdrop-blur rounded-full text-white border transition-all ${showSettings ? 'bg-indigo-600 border-indigo-500' : 'bg-black/30 border-white/10'}`}>
                        <Settings size={20} />
                    </button>
                </div>
+
+               {/* SETTINGS DROPDOWN */}
+               {showSettings && (
+                   <div className="absolute top-24 right-6 z-30 w-48 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl p-2 animate-pop">
+                       <button onClick={handleLeaveCrew} className="w-full flex items-center gap-2 px-3 py-3 text-red-400 hover:bg-slate-800 rounded-xl transition-colors">
+                           <LogOut size={16} />
+                           <span className="text-[10px] font-black uppercase tracking-widest">Leave Unit</span>
+                       </button>
+                   </div>
+               )}
 
                <div className="absolute bottom-0 left-0 w-full p-8 z-20">
                    <div className="flex items-end justify-between">
@@ -313,6 +396,37 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                    </div>
                )}
 
+               {/* ADMIN REQUESTS SECTION */}
+               {isAdmin && pendingRequests.length > 0 && (
+                   <section className="bg-slate-900/80 border border-indigo-500/30 p-4 rounded-2xl shadow-[0_0_20px_rgba(99,102,241,0.1)]">
+                       <div className="flex justify-between items-center mb-3">
+                           <h3 className="text-xs font-black uppercase italic text-white tracking-widest flex items-center gap-2">
+                               <Shield size={14} className="text-indigo-500" /> Incoming Signal
+                           </h3>
+                           <span className="text-[9px] font-bold bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full">{pendingRequests.length}</span>
+                       </div>
+                       <div className="space-y-2">
+                           {pendingRequests.map(reqId => (
+                               <div key={reqId} className="flex items-center justify-between bg-black/40 p-2 rounded-xl">
+                                   <div className="flex items-center gap-2">
+                                       <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
+                                           <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${reqId}`} className="w-full h-full object-cover" />
+                                       </div>
+                                       <div className="flex flex-col">
+                                           <span className="text-[9px] font-bold text-white uppercase">User #{reqId.slice(-4)}</span>
+                                           <span className="text-[8px] text-slate-500 uppercase tracking-widest">Waiting...</span>
+                                       </div>
+                                   </div>
+                                   <div className="flex gap-1">
+                                       <button onClick={() => handleReviewRequest(reqId, false)} className="p-2 bg-slate-800 text-red-400 rounded-lg hover:bg-red-900/30"><X size={12} /></button>
+                                       <button onClick={() => handleReviewRequest(reqId, true)} className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 shadow-lg"><Check size={12} /></button>
+                                   </div>
+                               </div>
+                           ))}
+                       </div>
+                   </section>
+               )}
+
                {/* Stats Grid */}
                <div className="grid grid-cols-2 gap-3">
                    <div className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl">
@@ -339,7 +453,7 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                {/* Home Turf */}
                <section>
                    <h3 className="text-xs font-black uppercase italic text-white tracking-widest mb-3 flex items-center gap-2">
-                       <Flag size={14} className="text-red-500" /> Home Turf
+                       <Target size={14} className="text-red-500" /> Home Turf
                    </h3>
                    <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-1 flex items-center gap-4 pr-6">
                        <div className="w-20 h-20 bg-slate-800 rounded-[1.7rem] flex items-center justify-center text-slate-600 overflow-hidden relative">
@@ -350,19 +464,24 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                            <h4 className="text-sm font-black uppercase italic text-white">{crew.homeSpotName || 'Unknown Sector'}</h4>
                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mt-1">Designated Meeting Point</p>
                        </div>
-                       <button className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                       <button className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white shadow-lg">
                            <MapPin size={14} />
                        </button>
                    </div>
                </section>
 
                {/* Weekly Objective */}
-               <section className="bg-gradient-to-r from-slate-900 to-slate-900/50 border border-white/5 rounded-3xl p-6 relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-5">
+               <section className="bg-gradient-to-r from-slate-900 to-slate-900/50 border border-white/5 rounded-3xl p-6 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
                         <Target size={100} />
                     </div>
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 mb-2">Weekly Objective</h3>
-                    <p className="text-lg font-black text-white italic uppercase mb-4">{crew.weeklyGoal.description}</p>
+                    <div className="flex justify-between items-start mb-2">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Weekly Objective</h3>
+                        <div className="bg-green-500/10 border border-green-500/20 text-green-400 text-[9px] font-bold px-2 py-1 rounded-lg uppercase tracking-wide">
+                            Active
+                        </div>
+                    </div>
+                    <p className="text-lg font-black text-white italic uppercase mb-4 leading-tight">{crew.weeklyGoal.description}</p>
                     <div className="flex items-center gap-4">
                         <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
                             <div className="h-full bg-green-500 w-1/3 shadow-[0_0_10px_#22c55e]"></div>
@@ -371,12 +490,14 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                     </div>
                </section>
 
-               {/* Members */}
+               {/* Members List */}
                <section>
-                   <h3 className="text-xs font-black uppercase italic text-white tracking-widest mb-3">Active Unit</h3>
+                   <h3 className="text-xs font-black uppercase italic text-white tracking-widest mb-3 flex items-center gap-2">
+                       <Shield size={14} /> Active Unit
+                   </h3>
                    <div className="space-y-3">
                        {/* Current User */}
-                       <div className="flex items-center gap-4 bg-slate-900/30 p-3 rounded-2xl border border-white/5">
+                       <div className="flex items-center gap-4 bg-slate-900/50 p-3 rounded-2xl border border-white/5">
                             <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
                                 <img src={user?.avatar} className="w-full h-full object-cover" />
                             </div>
@@ -384,19 +505,24 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
                                 <div className="flex items-center gap-2">
                                     <h4 className="text-xs font-black uppercase text-white">{user?.name}</h4>
                                     <span className="bg-indigo-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded">YOU</span>
+                                    {isAdmin && <span className="bg-yellow-500/20 text-yellow-500 text-[8px] font-bold px-1.5 py-0.5 rounded border border-yellow-500/30">ADMIN</span>}
                                 </div>
                                 <p className="text-[9px] text-slate-500 font-bold uppercase">Level {user?.level}</p>
                             </div>
-                            <Crown size={14} className="text-yellow-500" />
+                            {isAdmin && <Crown size={14} className="text-yellow-500" />}
                        </div>
-                       {/* Placeholders for other members */}
-                       {[1,2].map(i => (
-                           <div key={i} className="flex items-center gap-4 p-3 opacity-50">
-                                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700"></div>
-                                <div className="flex-1 space-y-1">
-                                    <div className="w-24 h-3 bg-slate-800 rounded"></div>
-                                    <div className="w-12 h-2 bg-slate-800 rounded"></div>
+                       
+                       {/* Placeholder for other members logic (since mock backend only stores IDs) */}
+                       {[...Array(Math.max(0, crew.members.length - 1))].map((_, i) => (
+                           <div key={i} className="flex items-center gap-4 p-3 bg-slate-950/30 rounded-2xl border border-transparent">
+                                <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-600">
+                                    <UserIcon size={16} />
                                 </div>
+                                <div className="flex-1 space-y-1">
+                                    <div className="w-20 h-3 bg-slate-800 rounded animate-pulse"></div>
+                                    <div className="w-8 h-2 bg-slate-900 rounded"></div>
+                                </div>
+                                <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Operative</div>
                            </div>
                        ))}
                    </div>

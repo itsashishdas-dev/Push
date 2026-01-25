@@ -89,7 +89,10 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onShowPrivacy }) => {
         
         {/* REPLACED LOGO WITH TEXT HEADER */}
         <div className="flex flex-col items-center text-center">
-          <h1 className="text-8xl font-black italic tracking-tighter text-white leading-[0.85] drop-shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+          <h1 
+            className="text-8xl font-black italic tracking-tighter text-white leading-[0.85]"
+            style={{ textShadow: '0 0 40px rgba(255,255,255,0.6)' }}
+          >
             SPOTS
           </h1>
           <div className="flex items-center gap-3 mt-6">

@@ -1,35 +1,61 @@
 
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useAppStore } from './store.ts';
+import { backend } from './services/mockBackend.ts';
+
+// Components
 import Navigation from './components/Navigation.tsx';
+import AddSpotModal from './components/AddSpotModal.tsx';
+import SpotPreviewCard from './components/SpotPreviewCard.tsx'; 
+
+// Views
 import SpotsView from './views/SpotsView.tsx';
-import SkillsView from './views/SkillsView.tsx';
-import ProfileView from './views/ProfileView.tsx';
-import MentorshipView from './views/MentorshipView.tsx';
+import GridView from './views/GridView.tsx';
 import ChallengesView from './views/ChallengesView.tsx';
+import MentorshipView from './views/MentorshipView.tsx';
+import SkillsView from './views/SkillsView.tsx';
 import JourneyView from './views/JourneyView.tsx';
+import ProfileView from './views/ProfileView.tsx';
+import CrewView from './views/CrewView.tsx';
 import AdminDashboardView from './views/AdminDashboardView.tsx';
 import LoginView from './views/LoginView.tsx';
 import OnboardingView from './views/OnboardingView.tsx';
 import PrivacyPolicyView from './views/PrivacyPolicyView.tsx';
-import CrewView from './views/CrewView.tsx';
-import { backend } from './services/mockBackend.ts';
-import { User } from './types.ts';
-import { useAppStore } from './store.ts';
+
+// Services
+import { VerificationService } from './services/verificationService.ts';
+import { triggerHaptic } from './utils/haptics.ts';
+import { playSound } from './utils/audio.ts';
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('spots');
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
+  const [crews, setCrews] = useState<any[]>([]);
   
-  const { user, initializeData, setUserLocation, updateUser } = useAppStore();
+  const { 
+    user, 
+    currentView, 
+    activeModal, 
+    selectedSpot,
+    sessions,
+    challenges, 
+    initializeData, 
+    setUserLocation, 
+    updateUser, 
+    closeModal,
+    setView
+  } = useAppStore();
 
+  // --- INITIALIZATION ---
   useEffect(() => {
     const checkAuth = async () => {
       const loggedIn = await backend.isLoggedIn();
       if (loggedIn) {
         setIsLoggedIn(true);
         initializeData();
+        const allCrews = await backend.getAllCrews();
+        setCrews(allCrews);
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => setUserLocation(pos.coords.latitude, pos.coords.longitude),
@@ -55,9 +81,9 @@ const App: React.FC = () => {
     await backend.logout();
     setIsLoggedIn(false);
     updateUser(null as any);
-    setActiveTab('spots');
   };
 
+  // --- RENDERING GUARDS ---
   if (isLoggedIn === null) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-black gap-4">
@@ -68,41 +94,58 @@ const App: React.FC = () => {
 
   if (showPrivacy) return <PrivacyPolicyView onBack={() => setShowPrivacy(false)} />;
   if (!isLoggedIn) return <LoginView onLogin={handleLogin} onShowPrivacy={() => setShowPrivacy(true)} />;
-  
-  if (user && !user.onboardingComplete) {
-    return <OnboardingView onComplete={async (d) => { 
-        const u = await backend.completeOnboarding(d); 
-        updateUser(u); 
-    }} />;
-  }
+  if (user && !user.onboardingComplete) return <OnboardingView onComplete={async (d) => { const u = await backend.completeOnboarding(d); updateUser(u); }} />;
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'spots': return <SpotsView />;
-      case 'challenges': return <ChallengesView onNavigate={setActiveTab} />;
-      case 'mentorship': return <MentorshipView />;
-      case 'skills': return <SkillsView />;
-      case 'journey': return <JourneyView />;
-      case 'profile': return <ProfileView setActiveTab={setActiveTab} onLogout={handleLogout} />;
-      case 'crew': return <CrewView onBack={() => setActiveTab('profile')} />;
-      case 'admin': return <AdminDashboardView onBack={() => setActiveTab('profile')} />;
-      default: return <SpotsView />;
-    }
-  };
+  // Filter data for selected spot
+  const spotSessions = selectedSpot ? sessions.filter(s => s.spotId === selectedSpot.id) : [];
+  const spotChallenges = selectedSpot ? challenges.filter(c => c.spotId === selectedSpot.id) : [];
+  const spotCrew = selectedSpot ? crews.find(c => c.homeSpotId === selectedSpot.id) : undefined;
 
+  // --- MAIN LAYOUT ---
   return (
-    <div className="flex flex-col h-screen w-full bg-black text-slate-100 overflow-hidden relative">
-      {/* Main Content Area - Delegated Scroll */}
-      <main className="flex-1 h-full relative z-10 overflow-hidden">
-        <div className="h-full w-full max-w-screen-md mx-auto">
-            {renderContent()}
-        </div>
+    <div className="flex flex-col h-screen w-full bg-[#020202] text-slate-100 overflow-hidden relative">
+      
+      {/* ACTIVE VIEW AREA */}
+      <main className="flex-1 relative overflow-hidden h-full w-full">
+        {currentView === 'MAP' && <SpotsView />} 
+        {currentView === 'LIST' && <GridView />}
+        {currentView === 'CHALLENGES' && <ChallengesView onNavigate={(t) => setView(t as any)} />}
+        {currentView === 'MENTORSHIP' && <MentorshipView />}
+        {currentView === 'SKILLS' && <SkillsView />}
+        {currentView === 'JOURNEY' && <JourneyView />}
+        {currentView === 'PROFILE' && <ProfileView setActiveTab={(t) => setView(t as any)} onLogout={handleLogout} />}
+        {currentView === 'CREW' && <CrewView onBack={() => setView('CHALLENGES')} />}
+        {currentView === 'ADMIN' && <AdminDashboardView onBack={() => setView('PROFILE')} />}
       </main>
 
-      {/* Navigation - Always Fixed Bottom */}
-      <div className="z-[100] w-full border-t border-white/5 bg-black/80 backdrop-blur-xl absolute bottom-0 left-0">
-        <Navigation activeTab={activeTab === 'crew' ? 'challenges' : activeTab} setActiveTab={setActiveTab} />
-      </div>
+      {/* GLOBAL OVERLAYS */}
+      
+      {/* Spot Preview Card Overlay */}
+      {activeModal === 'SPOT_DETAIL' && selectedSpot && (
+         <>
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-40 animate-[fadeIn_0.2s_ease-out]" onClick={closeModal} />
+            
+            {/* Sheet */}
+            <SpotPreviewCard 
+                spot={selectedSpot}
+                sessions={spotSessions}
+                challenges={spotChallenges}
+                crew={spotCrew}
+                onClose={closeModal}
+                onCheckIn={() => {
+                    const check = VerificationService.canCheckIn(useAppStore.getState().location, selectedSpot);
+                    if (check.allowed) { triggerHaptic('success'); playSound('success'); alert("Checked In! +10 XP"); }
+                    else { triggerHaptic('error'); alert(check.reason); }
+                }}
+            />
+         </>
+      )}
+
+      {activeModal === 'ADD_SPOT' && <AddSpotModal />}
+
+      {/* NAVIGATION */}
+      <Navigation />
     </div>
   );
 };

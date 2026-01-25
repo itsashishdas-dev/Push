@@ -59,6 +59,27 @@ export enum MentorBadge {
   EXPERT = 'expert'
 }
 
+export enum BadgeTier {
+  ROOKIE = 'rookie',
+  INITIATE = 'initiate',
+  SKILLED = 'skilled',
+  VETERAN = 'veteran',
+  LEGEND = 'legend'
+}
+
+// --- UI STATE TYPES ---
+export type AppView = 'MAP' | 'LIST' | 'CHALLENGES' | 'MENTORSHIP' | 'SKILLS' | 'JOURNEY' | 'PROFILE' | 'CREW' | 'ADMIN';
+export type ModalType = 'NONE' | 'SPOT_DETAIL' | 'ADD_SPOT' | 'CREATE_SESSION' | 'SETTINGS' | 'VIDEO_UPLOAD';
+
+export interface Badge {
+  id: string;
+  name: string;
+  description: string;
+  tier: BadgeTier;
+  icon: string; 
+  conditionDescription: string;
+}
+
 export interface Quest {
   id: string;
   title: string;
@@ -68,7 +89,7 @@ export interface Quest {
   current: number;
   xpReward: number;
   isCompleted: boolean;
-  expiresIn: string; // e.g., "14h 30m"
+  expiresIn: string;
 }
 
 export interface Collectible {
@@ -97,6 +118,8 @@ export interface Crew {
   homeSpotName?: string;
   maxMembers?: number;
   members: string[];
+  adminIds: string[]; // List of user IDs who can manage the crew
+  requests: string[]; // List of user IDs requesting to join
   level: number;
   totalXp: number;
   weeklyGoal: {
@@ -156,9 +179,10 @@ export interface User {
   avatar?: string;
   locker: string[];
   completedChallengeIds: string[];
-  pendingSkills: string[]; // IDs of skills waiting for verification
-  landedSkills: string[]; // IDs of skills marked as landed (no video)
-  masteredSkills: string[]; // IDs of skills with video proof
+  pendingSkills: string[];
+  landedSkills: string[];
+  masteredSkills: string[];
+  badges: string[];
   isMentor: boolean;
   friends: string[];
   friendRequests: FriendRequest[];
@@ -178,13 +202,18 @@ export interface User {
     skate?: string;
     downhill?: string;
   };
+  stats?: {
+    totalSessions: number;
+    spotsFound: number;
+    distanceTraveled: number;
+  }
 }
 
 export interface Spot {
   id: string;
   name: string;
   type: Discipline;
-  category?: SpotCategory; // Added for map icon specificity
+  category?: SpotCategory;
   difficulty: Difficulty;
   state: string;
   surface: string;
@@ -196,8 +225,8 @@ export interface Spot {
   notes: string;
   isVerified: boolean;
   verificationStatus: VerificationStatus;
-  status?: SpotStatus; // Live status
-  distance?: number; // Calculated distance from user
+  status?: SpotStatus;
+  distance?: number;
   images?: string[];
   sessions: any[];
   rating: number;
@@ -263,7 +292,7 @@ export interface Skill {
   name: string;
   category: Discipline;
   difficulty: Difficulty;
-  tier: 1 | 2 | 3 | 4; // Added tier for tree structure
+  tier: 1 | 2 | 3 | 4;
   description: string;
   xpReward: number;
   tutorialUrl: string;

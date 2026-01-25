@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Mentor, Booking, Discipline } from '../types';
+import { Mentor, Booking, Discipline, BadgeTier, MentorBadge } from '../types';
 import { backend } from '../services/mockBackend';
 import { askAICoach } from '../services/geminiService';
-import { Star, Send, Loader2, Sparkles, Play, X, Calendar, Clock, CheckCircle2, Quote, User as UserIcon, BadgeCheck, Zap, Filter, Bot, MessageSquare, ChevronRight, Terminal, BrainCircuit, Activity, Settings } from 'lucide-react';
+import { Star, Send, Loader2, Sparkles, Play, X, Calendar, Clock, CheckCircle2, Quote, User as UserIcon, BadgeCheck, Zap, Filter, Bot, MessageSquare, ChevronRight, Terminal, BrainCircuit, Activity, Settings, Lock, Users } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
 import { useAppStore } from '../store';
@@ -27,7 +27,7 @@ const SUGGESTED_AI_PROMPTS = [
 const MentorshipView: React.FC = () => {
   const { user } = useAppStore();
   const [mentors, setMentors] = useState<Mentor[]>([]);
-  const [activeTab, setActiveTab] = useState<'find' | 'ai-coach'>('find');
+  const [activeTab, setActiveTab] = useState<'find' | 'ai-coach' | 'apply'>('find');
   const [searchQuery, setSearchQuery] = useState('');
   const [disciplineFilter, setDisciplineFilter] = useState<Discipline | 'ALL'>('ALL');
   
@@ -48,6 +48,9 @@ const MentorshipView: React.FC = () => {
   const loadData = async () => {
     setMentors(await backend.getMentors());
   };
+
+  // Eligibility Checks
+  const isEligibleForMentor = user && user.level >= 15 && user.badges.includes('badge_veteran_guardian');
 
   const handleAiSend = async (textOverride?: string) => {
     const textToSend = textOverride || aiInput;
@@ -124,62 +127,44 @@ const MentorshipView: React.FC = () => {
        </header>
       
       {/* --- MODE SWITCHER --- */}
-      <div className="grid grid-cols-2 gap-2 mb-6 shrink-0 relative z-10">
+      <div className="flex bg-[#0b0c10] p-1 rounded-xl border border-white/10 mb-6 shrink-0 relative z-10 backdrop-blur-sm">
            <button 
              onClick={() => { setActiveTab('find'); triggerHaptic('light'); }} 
-             className={`relative overflow-hidden py-4 rounded-2xl border transition-all duration-300 group ${activeTab === 'find' ? 'bg-indigo-600 border-indigo-500 shadow-[0_0_15px_rgba(79,70,229,0.25)]' : 'bg-[#0b0c10] border-slate-800'}`}
+             className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'find' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
            >
-               <div className="flex flex-col items-center gap-1 relative z-10">
-                   <UserIcon size={20} className={activeTab === 'find' ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'} />
-                   <span className={`text-[9px] font-black uppercase tracking-widest ${activeTab === 'find' ? 'text-white' : 'text-slate-500'}`}>Live Coaching</span>
-               </div>
-               {activeTab === 'find' && <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />}
+               Find Mentor
            </button>
-
            <button 
              onClick={() => { setActiveTab('ai-coach'); triggerHaptic('light'); }} 
-             className={`relative overflow-hidden py-4 rounded-2xl border transition-all duration-300 group ${activeTab === 'ai-coach' ? 'bg-emerald-600 border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)]' : 'bg-[#0b0c10] border-slate-800'}`}
+             className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'ai-coach' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
            >
-               <div className="flex flex-col items-center gap-1 relative z-10">
-                   <Bot size={20} className={activeTab === 'ai-coach' ? 'text-white' : 'text-slate-500 group-hover:text-slate-300'} />
-                   <span className={`text-[9px] font-black uppercase tracking-widest ${activeTab === 'ai-coach' ? 'text-white' : 'text-slate-500'}`}>System Link</span>
-               </div>
-               {activeTab === 'ai-coach' && <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />}
+               AI Coach
+           </button>
+           <button 
+             onClick={() => { setActiveTab('apply'); triggerHaptic('light'); }} 
+             className={`flex-1 py-3 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${activeTab === 'apply' ? 'bg-slate-700 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+           >
+               Teach
            </button>
       </div>
 
       {/* --- AI COACH INTERFACE --- */}
       {activeTab === 'ai-coach' && (
           <div className="flex-1 flex flex-col bg-[#0b0c10] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative min-h-0 animate-view">
-              
-              {/* Terminal Header */}
               <div className="bg-[#020202] p-3 border-b border-white/10 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
                       <Terminal size={14} className="text-emerald-500" />
                       <span className="text-[10px] font-mono font-bold text-emerald-500 uppercase tracking-widest">SPOT_NET // v2.5</span>
                   </div>
-                  <div className="flex gap-1">
-                      <div className="w-2 h-2 rounded-full bg-slate-800" />
-                      <div className="w-2 h-2 rounded-full bg-slate-800" />
-                  </div>
               </div>
-
-              {/* Chat Area */}
               <div className="flex-1 overflow-y-auto p-4 space-y-6 relative">
-                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
-                      <BrainCircuit size={200} />
-                  </div>
-
                   {chat.length === 0 && (
                       <div className="space-y-6 mt-4 relative z-10">
                           <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-xl">
                               <p className="text-xs font-mono text-emerald-400 mb-2">> SYSTEM INITIALIZED</p>
-                              <p className="text-sm text-emerald-100">Welcome to the Neural Training Network. I can analyze tricks, suggest gear, or help you find lines.</p>
+                              <p className="text-sm text-emerald-100">Welcome to the Neural Training Network.</p>
                           </div>
-                          
-                          <div>
-                              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3 px-1">Execute Command:</p>
-                              <div className="grid grid-cols-1 gap-2">
+                          <div className="grid grid-cols-1 gap-2">
                                   {SUGGESTED_AI_PROMPTS.map((prompt) => (
                                       <button 
                                         key={prompt.id}
@@ -193,306 +178,286 @@ const MentorshipView: React.FC = () => {
                                           <ChevronRight size={14} className="ml-auto text-slate-600 group-hover:text-emerald-500" />
                                       </button>
                                   ))}
-                              </div>
                           </div>
                       </div>
                   )}
-
                   {chat.map((msg, idx) => (
                       <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-pop relative z-10`}>
-                          <div 
-                            className={`max-w-[85%] p-4 rounded-2xl text-sm font-medium leading-relaxed shadow-lg ${
-                                msg.role === 'user' 
-                                ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                                : 'bg-[#1e2330] border border-white/5 text-slate-200 rounded-tl-sm'
-                            }`}
-                          >
-                              {msg.role === 'model' && <div className="text-[8px] font-black uppercase text-emerald-500 mb-1 tracking-widest">> RESPONSE</div>}
+                          <div className={`max-w-[85%] p-4 rounded-2xl text-sm font-medium leading-relaxed shadow-lg ${msg.role === 'user' ? 'bg-indigo-600 text-white' : 'bg-[#1e2330] border border-white/5 text-slate-200'}`}>
                               {msg.text}
                           </div>
                       </div>
                   ))}
-                  
-                  {isAiThinking && (
-                      <div className="flex justify-start animate-pulse relative z-10">
-                          <div className="bg-[#1e2330] border border-white/5 p-4 rounded-2xl rounded-tl-sm flex items-center gap-2">
-                              <Loader2 className="animate-spin text-emerald-500" size={16} />
-                              <span className="text-xs font-mono text-emerald-500">PROCESSING DATA...</span>
-                          </div>
-                      </div>
-                  )}
+                  {isAiThinking && <div className="flex justify-start animate-pulse"><div className="bg-[#1e2330] p-4 rounded-2xl"><Loader2 className="animate-spin text-emerald-500" size={16} /></div></div>}
                   <div ref={chatEndRef} />
               </div>
-
-              {/* Input Area */}
               <div className="p-3 bg-[#020202] border-t border-white/10 shrink-0">
                   <div className="flex gap-2 items-center bg-[#0b0c10] rounded-xl px-4 py-2 border border-white/10 focus-within:border-emerald-500/50 transition-colors">
                       <Terminal size={16} className="text-slate-500" />
-                      <input 
-                        className="flex-1 bg-transparent text-sm text-white focus:outline-none py-2 placeholder:text-slate-600 font-mono"
-                        placeholder="Enter command..."
-                        value={aiInput}
-                        onChange={e => setAiInput(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && handleAiSend()}
-                      />
-                      <button 
-                        onClick={() => handleAiSend()} 
-                        disabled={!aiInput.trim()} 
-                        className="p-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-600 transition-all hover:bg-emerald-500 active:scale-95"
-                      >
-                          <Send size={16} strokeWidth={2.5} />
-                      </button>
+                      <input className="flex-1 bg-transparent text-sm text-white focus:outline-none py-2 placeholder:text-slate-600 font-mono" placeholder="Enter command..." value={aiInput} onChange={e => setAiInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAiSend()} />
+                      <button onClick={() => handleAiSend()} disabled={!aiInput.trim()} className="p-2 bg-emerald-600 text-white rounded-lg disabled:opacity-50"><Send size={16} /></button>
                   </div>
               </div>
           </div>
       )}
 
-      {/* --- MENTORS LIST INTERFACE --- */}
+      {/* --- MENTOR LIST --- */}
       {activeTab === 'find' && (
           <div className="space-y-6 relative z-10">
-              
-              {/* Search & Filter Bar */}
               <div className="flex flex-col gap-3">
                   <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <Filter size={14} className="text-slate-500" />
-                      </div>
-                      <input 
-                        type="text" 
-                        placeholder="Search by name or style..."
-                        className="w-full bg-[#0b0c10]/80 rounded-xl py-3 pl-9 pr-4 text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border border-white/10 uppercase tracking-wide placeholder:text-slate-600 font-mono"
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                      />
-                  </div>
-                  
-                  {/* Filter Chips */}
-                  <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                      {['ALL', Discipline.SKATE, Discipline.DOWNHILL].map(d => (
-                          <button
-                            key={d}
-                            onClick={() => { setDisciplineFilter(d as any); triggerHaptic('light'); }}
-                            className={`px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
-                                disciplineFilter === d 
-                                ? 'bg-white text-black border-white shadow-lg' 
-                                : 'bg-[#0b0c10] text-slate-500 border-slate-800 hover:bg-slate-900'
-                            }`}
-                          >
-                              {d}
-                          </button>
-                      ))}
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Filter size={14} className="text-slate-500" /></div>
+                      <input type="text" placeholder="Search mentors..." className="w-full bg-[#0b0c10]/80 rounded-xl py-3 pl-9 pr-4 text-xs font-bold text-white focus:outline-none border border-white/10 uppercase tracking-wide" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
                   </div>
               </div>
-
-              {/* Mentor Cards Grid */}
               <div className="grid grid-cols-1 gap-4 pb-4">
                   {filteredMentors.map(mentor => (
-                      <div 
-                        key={mentor.id} 
-                        onClick={() => { setSelectedMentor(mentor); triggerHaptic('medium'); }} 
-                        className="group bg-[#0b0c10] border border-white/10 rounded-[2rem] p-1 pr-5 flex items-center gap-4 cursor-pointer hover:bg-slate-900 transition-all active:scale-[0.98] shadow-lg"
-                      >
-                          {/* Avatar */}
-                          <div className="relative w-20 h-20 rounded-[1.7rem] overflow-hidden bg-slate-800 shrink-0 border border-white/5 group-hover:border-white/20 transition-colors">
+                      <div key={mentor.id} onClick={() => { setSelectedMentor(mentor); triggerHaptic('medium'); }} className="group bg-[#0b0c10] border border-white/10 rounded-[2rem] p-1 pr-5 flex items-center gap-4 cursor-pointer hover:bg-slate-900 transition-all active:scale-[0.98] shadow-lg">
+                          <div className="relative w-20 h-20 rounded-[1.7rem] overflow-hidden bg-slate-800 shrink-0 border border-white/5">
                               <img src={mentor.avatar} className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                              <div className="absolute bottom-2 left-0 w-full flex justify-center">
-                                  <div className="flex gap-0.5">
-                                      {[...Array(5)].map((_, i) => (
-                                          <Star key={i} size={8} className={i < Math.floor(mentor.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-slate-600'} />
-                                      ))}
-                                  </div>
-                              </div>
                           </div>
-                          
                           <div className="flex-1 min-w-0 py-2">
-                              <div className="flex justify-between items-start mb-1">
-                                  <h3 className="text-base font-black italic uppercase text-white truncate">{mentor.name}</h3>
-                                  <div className="flex items-center gap-1 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20 text-indigo-300">
-                                      <span className="text-[10px] font-bold">₹{mentor.rate}</span>
-                                  </div>
-                              </div>
-                              
-                              <div className="flex gap-2 mb-2 flex-wrap">
-                                 {mentor.disciplines.map(d => (
-                                     <span key={d} className="text-[8px] font-black uppercase tracking-widest text-slate-500 bg-black px-1.5 py-0.5 rounded border border-white/5">{d}</span>
-                                 ))}
-                              </div>
-
+                              <h3 className="text-base font-black italic uppercase text-white truncate">{mentor.name}</h3>
                               <div className="flex items-center justify-between mt-1">
                                   <div className="flex -space-x-1.5">
-                                      {mentor.badges.includes('certified' as any) && (
-                                          <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center border border-slate-900 text-white" title="Certified">
-                                              <BadgeCheck size={10} />
-                                          </div>
-                                      )}
-                                      {mentor.badges.includes('expert' as any) && (
-                                          <div className="w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center border border-slate-900 text-white" title="Expert">
-                                              <Zap size={10} fill="currentColor" />
-                                          </div>
-                                      )}
+                                      {mentor.badges.includes(MentorBadge.CERTIFIED) && <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center border border-slate-900 text-white"><BadgeCheck size={10} /></div>}
                                   </div>
-                                  <span className="text-[9px] font-bold text-slate-500 flex items-center gap-1">
-                                      <UserIcon size={10} /> {mentor.studentsTrained} Students
-                                  </span>
+                                  <span className="text-[9px] font-bold text-slate-500">₹{mentor.rate}/hr</span>
                               </div>
                           </div>
                       </div>
                   ))}
-                  
-                  {filteredMentors.length === 0 && (
-                      <div className="py-12 text-center">
-                          <p className="text-xs font-bold text-slate-600 uppercase tracking-widest">No mentors found in this sector.</p>
-                      </div>
-                  )}
               </div>
           </div>
       )}
 
-      {/* --- MENTOR PROFILE & BOOKING OVERLAY --- */}
+      {/* --- TEACH APPLICATION (GATED) --- */}
+      {activeTab === 'apply' && (
+          <div className="flex-1 bg-[#0b0c10] rounded-[2rem] border border-white/10 p-6 flex flex-col items-center justify-center text-center animate-view relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-black pointer-events-none" />
+              
+              {isEligibleForMentor ? (
+                  <div className="relative z-10 space-y-4">
+                      <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto shadow-2xl shadow-indigo-600/30">
+                          <CheckCircle2 size={32} className="text-white" />
+                      </div>
+                      <h2 className="text-2xl font-black italic uppercase text-white tracking-tighter">Clearance Granted</h2>
+                      <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto">
+                          You have proven your skill and dedication. You are eligible to apply for the mentorship program.
+                      </p>
+                      <button 
+                        onClick={() => alert("Application Flow Coming Soon")}
+                        className="bg-white text-black px-8 py-4 rounded-xl text-xs font-black uppercase tracking-widest shadow-xl hover:bg-slate-200 transition-all active:scale-95 mt-4"
+                      >
+                          Start Application
+                      </button>
+                  </div>
+              ) : (
+                  <div className="relative z-10 space-y-6">
+                      <div className="w-16 h-16 bg-slate-900 rounded-full flex items-center justify-center mx-auto border-2 border-slate-800">
+                          <Lock size={24} className="text-slate-500" />
+                      </div>
+                      <div>
+                          <h2 className="text-2xl font-black italic uppercase text-white tracking-tighter mb-2">Access Denied</h2>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Requirements not met</p>
+                      </div>
+                      
+                      <div className="bg-black/40 rounded-xl p-4 text-left space-y-3 border border-white/5 w-full max-w-xs">
+                          <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Rider Level</span>
+                              <span className={`text-[10px] font-black uppercase ${user?.level && user.level >= 15 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {user?.level || 0}/15
+                              </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Guardian Badge</span>
+                              <span className={`text-[10px] font-black uppercase ${user?.badges.includes('badge_veteran_guardian') ? 'text-green-400' : 'text-red-400'}`}>
+                                  {user?.badges.includes('badge_veteran_guardian') ? 'Owned' : 'Locked'}
+                              </span>
+                          </div>
+                      </div>
+                      
+                      <p className="text-[9px] text-slate-600 font-mono uppercase">Keep pushing to unlock this path.</p>
+                  </div>
+              )}
+          </div>
+      )}
+
+      {/* --- MENTOR PROFILE MODAL (REMASTERED) --- */}
       {selectedMentor && (
-          <div className="fixed inset-0 z-[100] bg-[#020202] overflow-y-auto animate-view">
-             
-             {/* Header Image Area */}
-             <div className="relative h-80 w-full shrink-0">
-                 <img src={selectedMentor.avatar} className="w-full h-full object-cover opacity-70" />
-                 <div className="absolute inset-0 bg-gradient-to-t from-[#020202] via-[#020202]/40 to-transparent" />
-                 
-                 {/* Navigation Actions */}
-                 <div className="absolute top-0 left-0 w-full p-6 pt-safe-top z-20 flex justify-between">
-                     <button onClick={closeProfile} className="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 flex items-center justify-center active:scale-95 transition-all">
+        <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view">
+            {/* Card Container */}
+            <div className="w-full max-w-md bg-[#0b0c10] border border-white/10 rounded-[2.5rem] relative overflow-hidden flex flex-col max-h-[90vh] shadow-2xl">
+                
+                {/* 1. Header Image & Name */}
+                <div className="relative h-96 w-full shrink-0">
+                     {/* Image - Scaling pixel art properly */}
+                     <img src={selectedMentor.avatar} className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                     
+                     {/* Gradients to ensure text readability */}
+                     <div className="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-[#0b0c10]/20 to-transparent" />
+                     <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent" />
+
+                     {/* Top Controls */}
+                     <button 
+                        onClick={closeProfile} 
+                        className="absolute top-6 left-6 z-20 w-10 h-10 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 flex items-center justify-center active:scale-95 transition-all hover:bg-white/10"
+                     >
                          <X size={20} />
                      </button>
-                 </div>
-                 
-                 <div className="absolute bottom-0 left-0 w-full p-6 space-y-2">
-                     <div className="flex gap-2">
-                        {selectedMentor.badges.map(badge => (
-                            <span key={badge} className="bg-indigo-600 text-white text-[8px] font-black uppercase px-2 py-1 rounded shadow-lg tracking-widest">
-                                {badge}
-                            </span>
-                        ))}
+                     
+                     {/* Status Pill */}
+                     <div className="absolute top-6 right-6 z-20 bg-green-900/30 backdrop-blur-md border border-green-500/30 px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />
+                         <span className="text-[9px] font-black uppercase text-green-400 tracking-widest">1 Pros Online</span>
                      </div>
-                     <h1 className="text-5xl font-black italic uppercase text-white leading-[0.8] tracking-tighter drop-shadow-xl">{selectedMentor.name}</h1>
-                     <p className="text-xs font-bold text-slate-300 max-w-xs leading-relaxed opacity-90">"{selectedMentor.bio}"</p>
-                 </div>
-             </div>
 
-             <div className="p-6 space-y-10 pb-32">
-                 
-                 {/* Stats Row */}
-                 <div className="flex justify-between items-center bg-[#0b0c10] p-4 rounded-2xl border border-white/5 backdrop-blur-sm">
-                     <div className="text-center">
-                         <div className="text-xl font-black text-white italic">{selectedMentor.rating}</div>
-                         <div className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Rating</div>
-                     </div>
-                     <div className="w-px h-8 bg-white/10" />
-                     <div className="text-center">
-                         <div className="text-xl font-black text-white italic">{selectedMentor.studentsTrained}+</div>
-                         <div className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Students</div>
-                     </div>
-                     <div className="w-px h-8 bg-white/10" />
-                     <div className="text-center">
-                         <div className="text-xl font-black text-white italic text-indigo-400">₹{selectedMentor.rate}</div>
-                         <div className="text-[8px] font-black uppercase text-slate-500 tracking-widest">Per Hour</div>
-                     </div>
-                 </div>
-
-                 {/* Availability & Booking */}
-                 <section>
-                    <h3 className="text-sm font-black uppercase italic text-white tracking-widest mb-4 flex items-center gap-2">
-                        <Calendar size={14} className="text-indigo-500" /> Session Booking
-                    </h3>
-                    
-                    {/* Date Selector */}
-                    <div className="flex gap-2 overflow-x-auto hide-scrollbar mb-4 pb-1">
-                        {MOCK_DATES.map(date => (
-                            <button
-                                key={date}
-                                onClick={() => { setSelectedDate(date); triggerHaptic('light'); }}
-                                className={`flex-1 min-w-[80px] p-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${
-                                    selectedDate === date 
-                                    ? 'bg-white text-black border-white shadow-lg transform scale-105' 
-                                    : 'bg-[#0b0c10] text-slate-500 border-slate-800'
-                                }`}
-                            >
-                                <span className="text-[9px] font-black uppercase tracking-widest">{date.split(' ')[0]}</span>
-                                <span className={`text-xs font-bold ${selectedDate === date ? 'text-black' : 'text-white'}`}>{date.split(' ')[1] || '23'}</span>
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Time Slots */}
-                    <div className="grid grid-cols-3 gap-2">
-                        {MOCK_SLOTS.map(slot => (
-                            <button 
-                                key={slot}
-                                onClick={() => { setSelectedSlot(slot); triggerHaptic('light'); }}
-                                className={`py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border ${
-                                    selectedSlot === slot 
-                                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg' 
-                                    : 'bg-[#0b0c10] text-slate-400 border-slate-800 hover:border-slate-600'
-                                }`}
-                            >
-                                {slot}
-                            </button>
-                        ))}
-                    </div>
-                 </section>
-
-                 {/* Reviews */}
-                 <section>
-                    <div className="flex justify-between items-end mb-4">
-                        <h3 className="text-sm font-black uppercase italic text-white tracking-widest">Cadet Intel</h3>
-                        <div className="flex text-yellow-500">
-                            {[...Array(5)].map((_, i) => <Star key={i} size={10} fill="currentColor" />)}
-                        </div>
-                    </div>
-                    <div className="space-y-3">
-                        {MOCK_REVIEWS.map(review => (
-                            <div key={review.id} className="bg-[#0b0c10] border border-white/5 p-4 rounded-2xl relative">
-                                <Quote size={16} className="absolute top-4 right-4 text-slate-800" />
-                                <p className="text-xs text-slate-300 italic mb-2 pr-6">"{review.text}"</p>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 bg-slate-800 rounded-full flex items-center justify-center">
-                                        <UserIcon size={10} className="text-slate-500" />
-                                    </div>
-                                    <span className="text-[9px] font-black uppercase text-slate-500 tracking-widest">{review.user}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                 </section>
-
-             </div>
-
-             {/* Booking Action Bar */}
-             <div className="fixed bottom-0 left-0 w-full p-6 bg-gradient-to-t from-black via-black to-transparent z-50">
-                 {bookingSuccess ? (
-                     <div className="w-full h-16 bg-green-500 text-white rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(34,197,94,0.25)] animate-view border border-green-400">
-                         <CheckCircle2 size={24} className="animate-bounce" />
-                         <div className="flex flex-col items-start">
-                             <span className="font-black uppercase tracking-[0.2em] text-xs">Request Sent</span>
-                             <span className="text-[9px] font-bold opacity-80 uppercase">Awaiting Confirmation</span>
+                     {/* Name & Rate */}
+                     <div className="absolute bottom-0 left-0 w-full p-8 pb-4">
+                         <h1 className="text-6xl font-black italic uppercase text-white leading-[0.85] tracking-tighter drop-shadow-2xl mb-3">
+                             {selectedMentor.name}
+                         </h1>
+                         
+                         <div className="flex items-center gap-3">
+                             {selectedMentor.badges.includes(MentorBadge.CERTIFIED) && (
+                                 <div className="bg-blue-600 text-white text-[10px] font-bold px-3 py-1 rounded-md flex items-center gap-1 shadow-lg shadow-blue-900/20">
+                                     <BadgeCheck size={12} strokeWidth={3} /> Certified
+                                 </div>
+                             )}
+                             <span className="text-2xl font-black text-slate-200 italic tracking-tight">₹{selectedMentor.rate}/hr</span>
                          </div>
                      </div>
-                 ) : (
-                     <button
-                        onClick={handleBookSession}
-                        disabled={!selectedSlot || isBooking}
-                        className={`w-full h-16 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-[0.2em] text-sm transition-all shadow-2xl ${
-                            selectedSlot 
-                            ? 'bg-white text-black hover:bg-slate-200 active:scale-95' 
-                            : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
-                        }`}
-                     >
-                        {isBooking ? <Loader2 className="animate-spin" /> : <Clock size={18} />}
-                        {isBooking ? 'Processing...' : selectedSlot ? `Confirm: ${selectedSlot}` : 'Select Time Slot'}
-                     </button>
-                 )}
-             </div>
+                </div>
 
-          </div>
+                {/* 2. Scrollable Content */}
+                <div className="flex-1 overflow-y-auto hide-scrollbar p-6 pt-2 space-y-8 relative bg-[#0b0c10]">
+                    
+                    {/* Stats Row (New Detail) */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-[#121214] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
+                            <Star size={16} className="text-yellow-500 mb-1" fill="currentColor" />
+                            <span className="text-lg font-black text-white leading-none">{selectedMentor.rating}</span>
+                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Rating</span>
+                        </div>
+                        <div className="bg-[#121214] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
+                            <Users size={16} className="text-indigo-500 mb-1" />
+                            <span className="text-lg font-black text-white leading-none">{selectedMentor.studentsTrained}</span>
+                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Students</span>
+                        </div>
+                        <div className="bg-[#121214] border border-white/5 rounded-2xl p-3 flex flex-col items-center justify-center gap-1">
+                            <Activity size={16} className="text-emerald-500 mb-1" />
+                            <span className="text-lg font-black text-white leading-none">Lvl {selectedMentor.badges.includes(MentorBadge.EXPERT) ? '50' : '25'}</span>
+                            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Rank</span>
+                        </div>
+                    </div>
+
+                    {/* Booking Section */}
+                    <section>
+                        <h3 className="text-xs font-black uppercase italic text-white tracking-widest mb-4 flex items-center gap-2">
+                            <Calendar size={14} className="text-indigo-500" /> Session Booking
+                        </h3>
+                        
+                        {/* Time Slots Grid */}
+                        <div className="grid grid-cols-3 gap-3">
+                            {MOCK_SLOTS.map(slot => (
+                                <button 
+                                    key={slot} 
+                                    onClick={() => { setSelectedSlot(slot); triggerHaptic('medium'); }} 
+                                    className={`py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border relative overflow-hidden group active:scale-95 ${
+                                        selectedSlot === slot 
+                                        ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.3)] z-10' 
+                                        : 'bg-[#151515] text-slate-500 border-white/5 hover:border-white/20 hover:bg-[#1a1a1a] hover:text-slate-300'
+                                    }`}
+                                >
+                                    {slot}
+                                    {selectedSlot === slot && (
+                                        <div className="absolute inset-0 bg-indigo-500/10 animate-pulse pointer-events-none" />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Bio Snippet (New Detail) */}
+                    <section>
+                        <h3 className="text-xs font-black uppercase italic text-white tracking-widest mb-3 flex items-center gap-2">
+                            <Terminal size={14} className="text-indigo-500" /> Bio_Data
+                        </h3>
+                        <div className="bg-[#121214] border border-white/5 rounded-2xl p-4">
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed font-mono">
+                                "{selectedMentor.bio}"
+                            </p>
+                        </div>
+                    </section>
+
+                    {/* Reviews Snippet (New Detail) */}
+                    <section>
+                        <h3 className="text-xs font-black uppercase italic text-white tracking-widest mb-3 flex items-center gap-2">
+                            <MessageSquare size={14} className="text-indigo-500" /> Recent Comms
+                        </h3>
+                        <div className="space-y-3">
+                            {MOCK_REVIEWS.slice(0, 2).map(r => (
+                                <div key={r.id} className="bg-[#121214] border border-white/5 rounded-xl p-3 flex gap-3">
+                                    <div className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center shrink-0 text-[10px] font-black text-slate-500">
+                                        {r.user.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-[10px] font-black uppercase text-white">{r.user}</span>
+                                            <div className="flex text-yellow-500"><Star size={8} fill="currentColor" /></div>
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 leading-tight">"{r.text}"</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Spacer for bottom button */}
+                    <div className="h-4" />
+                </div>
+
+                {/* 3. Sticky Action Footer */}
+                <div className="p-6 pt-4 bg-[#0b0c10] border-t border-white/10 shrink-0 relative z-20">
+                     {bookingSuccess ? (
+                         <div className="w-full h-16 bg-green-500 text-white rounded-2xl flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(34,197,94,0.3)] animate-pop border border-green-400">
+                             <CheckCircle2 size={24} className="animate-bounce" />
+                             <div className="flex flex-col text-left">
+                                <span className="font-black uppercase tracking-[0.2em] text-sm leading-none">Booking Confirmed</span>
+                                <span className="text-[9px] font-bold uppercase tracking-widest opacity-80 mt-1">Check logs for details</span>
+                             </div>
+                         </div>
+                     ) : (
+                         <button 
+                            onClick={handleBookSession} 
+                            disabled={!selectedSlot || isBooking} 
+                            className={`w-full h-16 rounded-2xl flex items-center justify-center gap-3 font-black uppercase tracking-[0.2em] text-sm transition-all relative overflow-hidden group ${
+                                selectedSlot 
+                                ? 'bg-[#3730a3] text-white hover:bg-[#312e81] shadow-[0_0_30px_rgba(99,102,241,0.4)] active:scale-[0.98]' 
+                                : 'bg-[#1a1a1a] text-slate-600 cursor-not-allowed border border-white/5'
+                            }`}
+                        >
+                            {/* Button Shine Effect */}
+                            {selectedSlot && !isBooking && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                            )}
+
+                            {isBooking ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={20} />
+                                    <span>Processing Uplink...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Clock size={20} className={selectedSlot ? "text-indigo-300" : "text-slate-600"} />
+                                    <span>{selectedSlot ? `Confirm: ${selectedSlot}` : 'Select Time'}</span>
+                                </>
+                            )}
+                         </button>
+                     )}
+                </div>
+            </div>
+        </div>
       )}
     </div>
   );

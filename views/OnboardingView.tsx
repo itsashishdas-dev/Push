@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Discipline } from '../types';
-import { MapPin, ChevronRight, Loader2, Mountain, Camera, User as UserIcon, Globe, ShieldCheck, ArrowRight, Plus, Terminal, Cpu, ScanLine, Mail, Lock, Key, Grid3X3 } from 'lucide-react';
+import { MapPin, ChevronRight, Loader2, Mountain, Camera, User as UserIcon, Globe, ShieldCheck, ArrowRight, Plus, Terminal, Cpu, ScanLine, Mail, Lock, Key, Grid3X3, ArrowUpRight } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
 
@@ -200,9 +200,6 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
                   <div key={i} className={`w-0.5 h-0.5 rounded-full ${step > i + 1 ? 'bg-indigo-500' : 'bg-slate-800'}`} />
               ))}
           </div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-              Phase 0{step}
-          </div>
       </div>
   );
 
@@ -244,14 +241,16 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
 
           {/* STEP 1: IDENTITY (Enter World - Enhanced) */}
           {step === 1 && (
-              <div className="flex flex-col h-full animate-view">
-                  <div className="mb-4 pl-2">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_#22c55e]" />
-                        <span className="text-[9px] font-black uppercase text-green-500 tracking-widest drop-shadow-[0_0_5px_rgba(34,197,94,0.5)]">System Online</span>
-                    </div>
+              <div className="flex flex-col h-full animate-view relative">
+                  {/* Phase Indicator */}
+                  <div className="absolute top-0 right-0 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
+                      Phase 01
+                  </div>
+
+                  <div className="mb-4 pl-2 pt-2">
+                    <div className="w-12 h-0.5 bg-indigo-500 mb-6 shadow-[0_0_10px_#6366f1]"></div>
                     <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-2 leading-[0.85] text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">Enter<br/>World</h1>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] ml-1 leading-relaxed drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] ml-1 leading-relaxed">
                         Find Spots • Join Crews • Battle
                     </p>
                   </div>
@@ -378,12 +377,13 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
 
           {/* STEP 2: CLASS SELECTION */}
           {step === 2 && (
-             <div className="flex flex-col h-full animate-view">
-                <div className="mb-8 pl-1">
-                    <div className="flex items-center gap-2 mb-2">
-                         <div className="h-0.5 w-4 bg-indigo-500 rounded-full" />
-                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">Phase 02</span>
-                    </div>
+             <div className="flex flex-col h-full animate-view relative">
+                <div className="absolute top-0 right-0 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
+                    Phase 02
+                </div>
+
+                <div className="mb-8 pl-1 pt-2">
+                    <div className="w-12 h-0.5 bg-indigo-500 mb-6 shadow-[0_0_10px_#6366f1]"></div>
                     <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-3 leading-[0.85] drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">Riding<br/>Style</h1>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Choose your riding discipline</p>
                 </div>
@@ -491,31 +491,65 @@ const OnboardingView: React.FC<OnboardingViewProps> = ({ onComplete }) => {
              </div>
           )}
 
-          {/* STEP 3: STANCE */}
+          {/* STEP 3: STANCE (REDESIGNED) */}
           {step === 3 && (
-             <div className="flex flex-col h-full animate-view">
-                 <div className="mb-12 pl-1">
-                    <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-3 leading-[0.85] drop-shadow-[0_0_15px_rgba(255,255,255,0.5)]">Stance<br/>Check</h1>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Which foot pushes forward?</p>
+             <div className="flex flex-col h-full animate-view relative">
+                 {/* Phase Indicator */}
+                 <div className="absolute top-0 right-0 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">
+                     Phase 03
+                 </div>
+
+                 {/* Header */}
+                 <div className="mt-8 mb-10 pl-1">
+                    <div className="w-12 h-0.5 bg-indigo-500 mb-6 shadow-[0_0_10px_#6366f1]"></div>
+                    <h1 className="text-6xl font-black italic uppercase tracking-tighter mb-4 leading-[0.8] text-white drop-shadow-2xl">
+                        Stance<br/>Check
+                    </h1>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.25em]">
+                        Which foot pushes forward?
+                    </p>
                 </div>
                 
-                <div className="flex-1 flex flex-col gap-5">
+                {/* Cards */}
+                <div className="flex-1 flex flex-col gap-4">
                     {[
                         { id: 'regular', label: 'Regular', sub: 'Left Foot Forward' },
                         { id: 'goofy', label: 'Goofy', sub: 'Right Foot Forward' }
-                    ].map((s) => (
-                        <button
-                            key={s.id}
-                            onClick={() => { setStance(s.id as any); triggerHaptic('medium'); }}
-                            className={`flex-1 rounded-[2.5rem] border flex items-center justify-between px-8 transition-all duration-300 ${stance === s.id ? 'bg-white text-black border-white shadow-xl scale-[1.02]' : 'bg-slate-900/50 border-slate-800 text-slate-500'}`}
-                        >
-                            <div className="text-left">
-                                <h3 className="text-4xl font-black italic uppercase tracking-tighter">{s.label}</h3>
-                                <p className={`text-[10px] font-bold uppercase tracking-widest ${stance === s.id ? 'text-slate-500' : 'text-slate-700'}`}>{s.sub}</p>
-                            </div>
-                            {stance === s.id && <div className="w-6 h-6 bg-black rounded-full" />}
-                        </button>
-                    ))}
+                    ].map((s) => {
+                        const isSelected = stance === s.id;
+                        return (
+                            <button
+                                key={s.id}
+                                onClick={() => { setStance(s.id as any); triggerHaptic('medium'); }}
+                                className={`
+                                    relative w-full h-44 rounded-[2.5rem] flex items-center justify-between px-8 transition-all duration-500 group overflow-hidden border
+                                    ${isSelected 
+                                        ? 'bg-gradient-to-b from-gray-100 to-gray-400 text-black border-white shadow-[0_0_40px_rgba(255,255,255,0.15)] scale-[1.02] z-10' 
+                                        : 'bg-[#050608] border-white/5 text-slate-700 hover:border-white/10 hover:bg-[#0a0a0a]'
+                                    }
+                                `}
+                            >
+                                {/* Selected Shine */}
+                                {isSelected && <div className="absolute inset-0 bg-gradient-to-tr from-white/40 via-transparent to-transparent pointer-events-none" />}
+                                
+                                <div className="relative z-10 text-left">
+                                    <h3 className={`text-5xl font-black italic uppercase tracking-tighter mb-2 ${isSelected ? 'text-black' : 'text-slate-800 group-hover:text-slate-600'}`}>
+                                        {s.label}
+                                    </h3>
+                                    <p className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isSelected ? 'text-slate-600' : 'text-slate-800'}`}>
+                                        {s.sub}
+                                    </p>
+                                </div>
+
+                                {/* Indicator Circle */}
+                                <div className={`relative z-10 w-8 h-8 rounded-full transition-all duration-500 flex items-center justify-center
+                                    ${isSelected ? 'bg-black scale-100 shadow-xl' : 'bg-slate-900 border border-slate-800 scale-90'}
+                                `}>
+                                    {isSelected && <div className="w-2 h-2 bg-white rounded-full animate-pulse" />}
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
              </div>
           )}
