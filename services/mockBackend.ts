@@ -2,7 +2,7 @@
 import { 
   Spot, User, VerificationStatus, Discipline, Difficulty, Review, 
   SkillState, Skill, DailyNote, Challenge, Mentor,
-  ChallengeSubmission, Crew, ChatMessage, ExtendedSession, Quest, SpotStatus
+  ChallengeSubmission, Crew, ChatMessage, ExtendedSession, Quest, SpotStatus, SpotCategory
 } from '../types';
 import { MOCK_SPOTS, SKILL_LIBRARY, MOCK_CHALLENGES, MOCK_SESSIONS, MOCK_MENTORS, MOCK_NOTES } from '../constants';
 
@@ -135,6 +135,35 @@ class MockBackend {
     }));
   }
 
+  async addSpot(spotData: Partial<Spot>): Promise<Spot> {
+      const spots = await this.getSpots();
+      const newSpot: Spot = {
+          id: `spot-${Date.now()}`,
+          name: spotData.name || 'Unknown Spot',
+          type: spotData.type || Discipline.SKATE,
+          category: SpotCategory.STREET,
+          difficulty: Difficulty.BEGINNER,
+          state: 'Unknown',
+          surface: 'Concrete',
+          location: spotData.location || { lat: 20.5937, lng: 78.9629, address: 'Unknown' },
+          notes: spotData.notes || '',
+          isVerified: false,
+          verificationStatus: VerificationStatus.PENDING,
+          status: SpotStatus.DRY,
+          rating: 0,
+          sessions: [],
+          ...spotData
+      };
+      
+      // We need to persist only the raw spot data without session join
+      // In a real app, this would be cleaner. Here we strip session data before saving.
+      const rawSpots = spots.map(({sessions, ...s}) => s);
+      rawSpots.push(newSpot); // Push the new one
+      
+      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(rawSpots));
+      return newSpot;
+  }
+
   async getAllChallenges(): Promise<Challenge[]> {
     this.initDB();
     return this.safeParse(STORAGE_KEYS.CHALLENGES, MOCK_CHALLENGES);
@@ -204,7 +233,9 @@ class MockBackend {
     if (index !== -1) {
       spots[index].verificationStatus = status;
       spots[index].isVerified = status === VerificationStatus.VERIFIED;
-      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(spots));
+      // Strip sessions before saving
+      const rawSpots = spots.map(({sessions, ...s}) => s);
+      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(rawSpots));
     }
   }
 

@@ -53,10 +53,12 @@ import {
 import { Spot, SpotStatus, SpotCategory, ExtendedSession, Challenge, Review, Difficulty, Discipline } from '../types.ts';
 import { ErrorState } from '../components/States.tsx';
 import SpotCard from '../components/SpotCard.tsx';
+import DrillDownCard from '../components/DrillDownCard.tsx';
 import { triggerHaptic } from '../utils/haptics.ts';
 import { playSound } from '../utils/audio.ts';
 import { useAppStore } from '../store.ts';
 import { backend } from '../services/mockBackend.ts';
+import { STATE_IMAGES } from '../constants.tsx';
 
 // --- GEOLOCATION UTILS ---
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -98,7 +100,8 @@ const MAP_ICONS = {
     street: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>`, 
     downhill: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>`, 
     park: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"/></svg>`, 
-    diy: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>` 
+    diy: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`,
+    flat: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M2 12l2 2M22 12l-2 2"/></svg>`
 };
 
 // Full Legend Config
@@ -107,6 +110,7 @@ const LEGEND_ITEMS = [
     { id: 'downhill', label: 'Downhill', color: '#a855f7', svg: MAP_ICONS.downhill, type: 'spot' },
     { id: 'park', label: 'Skatepark', color: '#f59e0b', svg: MAP_ICONS.park, type: 'spot' },
     { id: 'diy', label: 'DIY Spot', color: '#10b981', svg: MAP_ICONS.diy, type: 'spot' },
+    { id: 'flat', label: 'Flatground', color: '#3b82f6', svg: MAP_ICONS.flat, type: 'spot' },
     // POIs
     { id: 'hospital', label: 'Medi-Bay', color: '#ef4444', svg: MAP_ICONS.hospital, type: 'poi' },
     { id: 'police', label: 'Enforcers', color: '#3b82f6', svg: MAP_ICONS.police, type: 'poi' },
@@ -118,8 +122,8 @@ function generateMockPOIs(centerLat: number, centerLng: number, count: number) {
     const poiTypes = LEGEND_ITEMS.filter(i => i.type === 'poi');
     return Array.from({ length: count }).map((_, i) => {
         const type = poiTypes[Math.floor(Math.random() * poiTypes.length)];
-        const lat = centerLat + (Math.random() - 0.5) * 0.36;
-        const lng = centerLng + (Math.random() - 0.5) * 0.36;
+        const lat = centerLat + (Math.random() - 0.5) * 3.0; 
+        const lng = centerLng + (Math.random() - 0.5) * 3.0;
         return { id: `poi-${i}`, lat, lng, ...type };
     });
 }
@@ -151,7 +155,8 @@ const SpotsView: React.FC = () => {
     challenges: allChallenges,
     error: isError,
     refreshSessions,
-    setUserLocation
+    setUserLocation,
+    addNewSpot
   } = useAppStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>('map');
@@ -168,6 +173,9 @@ const SpotsView: React.FC = () => {
   const [isLocating, setIsLocating] = useState(false); 
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   
+  // Grid View State Segregation
+  const [gridActiveState, setGridActiveState] = useState<string | null>(null);
+  
   const [localSessions, setLocalSessions] = useState<ExtendedSession[]>([]);
   const [localChallenges, setLocalChallenges] = useState<Challenge[]>([]);
   const [localReviews, setLocalReviews] = useState<Review[]>([]);
@@ -176,8 +184,8 @@ const SpotsView: React.FC = () => {
   
   const [visibleCount, setVisibleCount] = useState(10); 
   const [pois, setPois] = useState<any[]>([]);
+  const [isMapReady, setIsMapReady] = useState(false);
   
-  // New States for Dock/Zoom
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(15);
 
@@ -207,7 +215,7 @@ const SpotsView: React.FC = () => {
 
   useEffect(() => {
     setVisibleCount(10);
-  }, [searchQuery, activeFilter]);
+  }, [searchQuery, activeFilter, gridActiveState]);
 
   // Generate Mock POIs
   useEffect(() => {
@@ -252,10 +260,33 @@ const SpotsView: React.FC = () => {
     return withDistance.sort((a, b) => a.distance - b.distance);
   }, [allSpots, searchQuery, userCoords, activeFilter]);
 
-  // Use mapSpots for markers (show more context on map) and drawerSpots for the list UI
+  // Group by State for Grid View
+  const spotsByState = useMemo(() => {
+      const groups: Record<string, Spot[]> = {};
+      filteredSpots.forEach(s => {
+          const st = s.state || 'Unknown';
+          if (!groups[st]) groups[st] = [];
+          groups[st].push(s);
+      });
+      return groups;
+  }, [filteredSpots]);
+
+  const sortedStates = useMemo(() => Object.keys(spotsByState).sort(), [spotsByState]);
+
+  // Use mapSpots for markers (show more context on map)
   const mapSpots = useMemo(() => filteredSpots.slice(0, 50), [filteredSpots]);
-  const drawerSpots = useMemo(() => filteredSpots.slice(0, visibleCount), [filteredSpots, visibleCount]);
-  const hasMoreSpots = filteredSpots.length > visibleCount;
+  
+  // Drawer/Grid spots logic depends on if we are in state drilldown or top level
+  const activeStateSpots = useMemo(() => {
+      if (!gridActiveState) return [];
+      return spotsByState[gridActiveState] || [];
+  }, [gridActiveState, spotsByState]);
+
+  const gridDisplaySpots = useMemo(() => activeStateSpots.slice(0, visibleCount), [activeStateSpots, visibleCount]);
+  const hasMoreGridSpots = activeStateSpots.length > visibleCount;
+
+  // Drawer Spots (Map Mode) - just show nearest
+  const drawerSpots = useMemo(() => filteredSpots.slice(0, 10), [filteredSpots]);
 
   useEffect(() => {
     if (searchQuery.length > 1) {
@@ -319,11 +350,14 @@ const SpotsView: React.FC = () => {
     playSound('click');
     setIsCheckedIn(false);
     
-    const targetLat = spot.location.lat - (0.0020); 
-    mapInstanceRef.current?.flyTo([targetLat, spot.location.lng], 16, { 
-        duration: 1.5,
-        easeLinearity: 0.2
-    });
+    // If in map mode, fly to spot
+    if (viewMode === 'map') {
+        const targetLat = spot.location.lat - (0.0020); 
+        mapInstanceRef.current?.flyTo([targetLat, spot.location.lng], 16, { 
+            duration: 1.5,
+            easeLinearity: 0.2
+        });
+    }
   };
 
   const handleCloseCardRef = useRef(handleCloseCard);
@@ -334,8 +368,11 @@ const SpotsView: React.FC = () => {
       handleSpotSelectRef.current = handleSpotSelect;
   });
 
+  // --- MAP INITIALIZATION ---
   useEffect(() => {
     const L = (window as any).L;
+    
+    // Only initialize if container exists and map doesn't
     if (mapContainerRef.current && L && !mapInstanceRef.current) {
         const map = L.map(mapContainerRef.current, { 
             zoomControl: false, 
@@ -365,16 +402,29 @@ const SpotsView: React.FC = () => {
         markersLayerRef.current = L.layerGroup().addTo(map);
         poisLayerRef.current = L.layerGroup().addTo(map);
         
-        if (userCoords) {
-             map.flyTo([userCoords.lat, userCoords.lng], 12, { duration: 1.5 }); // City level zoom
-        }
+        setIsMapReady(true);
+        
+        // Initial fly to user if location is already known
+        // Note: userCoords might be null initially
     }
+
+    // Cleanup logic to prevent dual initialization issues in StrictMode
+    return () => {
+        if (mapInstanceRef.current) {
+            mapInstanceRef.current.remove();
+            mapInstanceRef.current = null;
+            markersLayerRef.current = null;
+            poisLayerRef.current = null;
+            userMarkerRef.current = null;
+            setIsMapReady(false);
+        }
+    };
   }, []);
 
   // Update User Marker
   useEffect(() => {
       const L = (window as any).L;
-      if (mapInstanceRef.current && L && userCoords) {
+      if (isMapReady && mapInstanceRef.current && L && userCoords) {
           if (userMarkerRef.current) {
               userMarkerRef.current.setLatLng([userCoords.lat, userCoords.lng]);
           } else {
@@ -392,14 +442,17 @@ const SpotsView: React.FC = () => {
                   iconAnchor: [20, 20]
               });
               userMarkerRef.current = L.marker([userCoords.lat, userCoords.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(mapInstanceRef.current);
+              
+              // Only fly to user on first location update if not already interacting
+              // We rely on 'Locate' button for deliberate centering usually
           }
       }
-  }, [userCoords]);
+  }, [userCoords, isMapReady]);
 
   // Update POI Markers
   useEffect(() => {
       const L = (window as any).L;
-      if (mapInstanceRef.current && poisLayerRef.current && L) {
+      if (isMapReady && mapInstanceRef.current && poisLayerRef.current && L) {
           poisLayerRef.current.clearLayers();
           
           if (zoomLevel > 8) {
@@ -416,37 +469,38 @@ const SpotsView: React.FC = () => {
               });
           }
       }
-  }, [pois, zoomLevel]);
+  }, [pois, zoomLevel, isMapReady]);
 
-  // Update Spot Markers - Uses categorized icons
+  // Update Spot Markers
   useEffect(() => {
       const L = (window as any).L;
-      if (mapInstanceRef.current && markersLayerRef.current && L) {
+      if (isMapReady && mapInstanceRef.current && markersLayerRef.current && L) {
           markersLayerRef.current.clearLayers();
 
           mapSpots.forEach(spot => {
             const isSelected = spot.id === selectedSpot?.id;
             
-            // Determine config based on category/type
             let config = LEGEND_ITEMS.find(item => item.id === 'street'); // default
             if (spot.type === Discipline.DOWNHILL) config = LEGEND_ITEMS.find(item => item.id === 'downhill');
             else if (spot.category === SpotCategory.PARK) config = LEGEND_ITEMS.find(item => item.id === 'park');
             else if (spot.category === SpotCategory.DIY) config = LEGEND_ITEMS.find(item => item.id === 'diy');
+            else if (spot.category === SpotCategory.FLATGROUND) config = LEGEND_ITEMS.find(item => item.id === 'flat');
             
             const color = config?.color || '#6366f1';
             const svg = config?.svg || MAP_ICONS.street;
             
             const html = `
-               <div class="relative w-8 h-8 flex items-center justify-center group transition-transform duration-300 ${isSelected ? 'scale-150' : 'hover:scale-125'}">
-                  <div class="absolute inset-0 rounded-full animate-breathe opacity-50" style="background-color: ${color}"></div>
-                  <div class="relative w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white" style="background-color: ${color}">
+               <div class="relative w-8 h-8 flex items-center justify-center group transition-transform duration-300 ${isSelected ? 'scale-150 z-50' : 'hover:scale-125 z-40'}">
+                  <div class="absolute inset-0 rounded-full animate-breathe-out pointer-events-none" style="background-color: ${color}"></div>
+                  <div class="relative w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white z-10" style="background-color: ${color}">
                       ${svg}
                   </div>
                </div>
             `;
 
             const marker = L.marker([spot.location.lat, spot.location.lng], {
-              icon: L.divIcon({ className: 'bg-transparent', html: html, iconSize: [32, 32], iconAnchor: [16, 16] })
+              icon: L.divIcon({ className: 'bg-transparent', html: html, iconSize: [32, 32], iconAnchor: [16, 16] }),
+              zIndexOffset: isSelected ? 1000 : 100
             });
 
             marker.on('click', (e: any) => {
@@ -457,7 +511,7 @@ const SpotsView: React.FC = () => {
             marker.addTo(markersLayerRef.current);
           });
       }
-  }, [mapSpots, selectedSpot]);
+  }, [mapSpots, selectedSpot, isMapReady]);
 
   const handleZoomIn = (e: React.MouseEvent) => { e.stopPropagation(); triggerHaptic('light'); mapInstanceRef.current?.zoomIn(); };
   const handleZoomOut = (e: React.MouseEvent) => { e.stopPropagation(); triggerHaptic('light'); mapInstanceRef.current?.zoomOut(); };
@@ -467,7 +521,7 @@ const SpotsView: React.FC = () => {
       triggerHaptic('medium');
       const flyTo = (lat: number, lng: number) => {
            if (mapInstanceRef.current) {
-              mapInstanceRef.current.flyTo([lat, lng], 12, { duration: 1.5, easeLinearity: 0.25 }); // Changed to 12 for City Level
+              mapInstanceRef.current.flyTo([lat, lng], 12, { duration: 1.5, easeLinearity: 0.25 });
            }
       };
       if (userCoords) {
@@ -495,7 +549,11 @@ const SpotsView: React.FC = () => {
       }
   };
 
-  const toggleViewMode = () => { triggerHaptic('medium'); setViewMode(prev => prev === 'map' ? 'grid' : 'map'); };
+  const toggleViewMode = () => { 
+      triggerHaptic('medium'); 
+      setViewMode(prev => prev === 'map' ? 'grid' : 'map');
+      setGridActiveState(null); // Reset grid drilldown on toggle
+  };
   const toggleNotifications = () => { triggerHaptic('medium'); setShowNotifications(!showNotifications); setShowFilters(false); };
   const toggleFilters = () => { triggerHaptic('light'); setShowFilters(!showFilters); setShowNotifications(false); };
   const toggleDrawer = (e: React.MouseEvent) => { e.stopPropagation(); setIsDrawerOpen(!isDrawerOpen); triggerHaptic('medium'); };
@@ -533,64 +591,28 @@ const SpotsView: React.FC = () => {
       setSessionForm({ title: '', date: new Date().toISOString().split('T')[0], time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), notes: '', intent: 'Chill' });
   };
 
-  const submitChallenge = () => {
-      if (!selectedSpot || !challengeForm.title) return;
-      triggerHaptic('medium');
-      const newChallenge: Challenge = {
-          id: `c-${Date.now()}`,
-          spotId: selectedSpot.id,
-          creatorId: user?.id || 'u-1',
-          creatorName: user?.name || 'You',
-          title: challengeForm.title,
-          description: challengeForm.desc,
-          difficulty: challengeForm.difficulty,
-          xpReward: 500,
-          completions: 0
-      };
-      setLocalChallenges(prev => [...prev, newChallenge]);
-      setActiveModal('none');
-      playSound('success');
-      setChallengeForm({ title: '', desc: '', difficulty: Difficulty.INTERMEDIATE });
-  };
-
-  const submitIntel = () => {
-      if (!selectedSpot || !intelForm.text) return;
-      triggerHaptic('medium');
-      const newReview: Review = {
-          id: `r-${Date.now()}`,
-          userId: user?.id || 'u-1',
-          userName: user?.name || 'You',
-          rating: intelForm.rating,
-          text: intelForm.text,
-          date: 'Just now'
-      };
-      setLocalReviews(prev => [newReview, ...prev]);
-      setActiveModal('none');
-      playSound('success');
-      setIntelForm({ rating: 5, text: '' });
-  };
-
-  const submitSpot = () => {
+  const submitSpot = async () => {
     if (!spotForm.name) return;
-    triggerHaptic('success'); playSound('success'); setActiveModal('none'); alert(`Spot "${spotForm.name}" submitted for verification.`); setSpotForm({ name: '', type: Discipline.SKATE, description: '' });
+    triggerHaptic('success'); 
+    playSound('success'); 
+    
+    await addNewSpot({
+        name: spotForm.name,
+        type: spotForm.type,
+        description: spotForm.description,
+        location: userCoords ? { ...userCoords, address: 'Pinned Location' } : undefined
+    });
+
+    setActiveModal('none'); 
+    setSpotForm({ name: '', type: Discipline.SKATE, description: '' });
   };
 
   if (isError) return <ErrorState onRetry={() => window.location.reload()} message={isError} />;
 
   const spotSessions = localSessions.filter(s => s.spotId === selectedSpot?.id);
-  const spotChallenges = localChallenges.filter(c => c.spotId === selectedSpot?.id);
 
   return (
     <div className="relative h-full w-full bg-[#020202] overflow-hidden isolate">
-      <style>{`
-        @keyframes enter-sheet { 0% { transform: translateY(100%); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-        @keyframes enter-modal { 0% { opacity: 0; transform: scale(0.96) translateY(8px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-        @keyframes enter-pop { 0% { opacity: 0; transform: scale(0.9) translateY(20px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
-        .animate-sheet { animation: enter-sheet 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
-        .animate-modal { animation: enter-modal 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .animate-pop { animation: enter-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-      `}</style>
-
       {/* ----------------- MAP LAYER (FIXED z-0) ----------------- */}
       <div className="absolute inset-0 z-0 h-full w-full pointer-events-auto">
           <div ref={mapContainerRef} className="w-full h-full" />
@@ -600,7 +622,7 @@ const SpotsView: React.FC = () => {
       <div className="absolute inset-0 z-10 pointer-events-none opacity-[0.05] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
 
       {/* ----------------- MAP LEGEND (SECTOR KEY) ----------------- */}
-      <div className={`absolute bottom-32 left-4 z-20 pointer-events-none transition-all duration-500 ${zoomLevel > 3 ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
+      <div className={`absolute bottom-32 left-4 z-20 pointer-events-none transition-all duration-500 ${zoomLevel > 3 && viewMode === 'map' ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4'}`}>
           <div className="pointer-events-auto flex flex-col items-start gap-2">
               <button 
                   onClick={() => { setIsLegendOpen(!isLegendOpen); triggerHaptic('light'); }}
@@ -633,7 +655,7 @@ const SpotsView: React.FC = () => {
       </div>
 
       {/* ----------------- TOP HUD (z-30) ----------------- */}
-      <div className="absolute top-0 left-0 w-full z-30 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pointer-events-none bg-gradient-to-b from-[#020202] via-[#020202]/80 to-transparent pb-24">
+      <div className="absolute top-0 left-0 w-full z-30 px-4 pt-safe-top pointer-events-none bg-gradient-to-b from-[#020202] via-[#020202]/80 to-transparent pb-24">
          <div className="flex items-start gap-3 pointer-events-auto max-w-full">
             <div className="shrink-0 pt-1">
                <div className="w-10 h-10 rounded-full border border-white/10 bg-[#0b0c10] overflow-hidden shadow-lg relative z-10">
@@ -710,9 +732,9 @@ const SpotsView: React.FC = () => {
       </div>
 
       {viewMode === 'map' && activeSheet === 'none' && (
-        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+4rem)] left-0 w-full z-20 flex flex-col justify-end pointer-events-none pb-0">
+        <div className="absolute bottom-pb-safe-bottom left-0 w-full z-20 flex flex-col justify-end pointer-events-none pb-20">
              
-             {/* Collapsible Dock Handle - Restyled */}
+             {/* Collapsible Dock Handle */}
              <div className="pointer-events-auto flex justify-center mb-4">
                  <button 
                     onClick={(e) => toggleDrawer(e)}
@@ -727,230 +749,151 @@ const SpotsView: React.FC = () => {
                  </button>
              </div>
 
-             {/* Collapsible Cards Container using drawerSpots (limited count) */}
-             <div className={`transition-all duration-500 ease-in-out origin-bottom ${isDrawerOpen ? 'max-h-64 opacity-100 translate-y-0' : 'max-h-0 opacity-0 translate-y-10'}`}>
-                 <div className="w-full overflow-x-auto hide-scrollbar px-6 flex gap-4 snap-x snap-mandatory pointer-events-auto relative z-10 pb-4">
-                     {drawerSpots.map(spot => (
-                       <div className="snap-center shrink-0 w-48" key={spot.id}>
-                            <SpotCard spot={spot} onClick={() => handleSpotSelect(spot)} />
-                       </div>
-                     ))}
-                     
-                     {hasMoreSpots && (
-                        <button onClick={handleShowMore} className="snap-center shrink-0 w-16 bg-[#0b0c10]/50 backdrop-blur border border-white/10 rounded-2xl flex items-center justify-center active:scale-95"><ArrowRight size={20} className="text-slate-400" /></button>
-                     )}
+             {/* Collapsible Cards Container */}
+             <div className={`transition-all duration-500 ease-in-out origin-bottom ${isDrawerOpen ? 'max-h-64 opacity-100 translate-y-0' : 'max-h-0 opacity-0 translate-y-4'}`}>
+                 <div className="bg-[#1a1a1a] border-t border-white/10 p-4 rounded-t-3xl shadow-2xl pointer-events-auto max-h-64 overflow-y-auto hide-scrollbar space-y-3">
+                    {drawerSpots.map(spot => (
+                        <SpotCard key={spot.id} spot={spot} onClick={() => handleSpotSelectRef.current(spot)} />
+                    ))}
                  </div>
              </div>
         </div>
       )}
-
-      {viewMode === 'grid' && (
-          <div className="absolute inset-0 z-50 bg-[#020202]/95 backdrop-blur-xl flex flex-col animate-sheet h-full overflow-y-auto">
-              <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
-              
-              <div className="pt-[calc(env(safe-area-inset-top)+1rem)] px-6 pb-6 flex justify-between items-end bg-gradient-to-b from-[#020202] via-[#020202] to-transparent z-20 shrink-0 border-b border-white/5 sticky top-0">
-                 <div>
-                    <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter leading-[0.85] drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">Sector<br/>Grid</h1>
-                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mt-2">{drawerSpots.length} Locations Active</p>
-                 </div>
-                 <button onClick={() => setViewMode('map')} className="w-10 h-10 rounded-full bg-[#0b0c10] border border-white/10 flex items-center justify-center text-white active:scale-90 transition-transform hover:bg-slate-800"><X size={20} /></button>
-              </div>
-
-              <div className="flex-1 px-4 pt-4 pb-32 hide-scrollbar relative z-10">
-                  <div className="grid grid-cols-2 gap-3">
-                      {drawerSpots.map(spot => (
-                          <div key={spot.id} onClick={() => { setSelectedSpot(spot); setActiveSheet('full-detail'); }} className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-4 flex flex-col justify-between h-48 relative group active:scale-95 transition-all shadow-lg overflow-hidden">
-                             <div className="absolute top-4 right-4 bg-black/60 px-2 py-1 rounded border border-white/5 backdrop-blur-sm z-10"><span className="text-[8px] font-black uppercase tracking-widest text-slate-300">{spot.type}</span></div>
-                             <div className={`absolute bottom-4 right-4 w-2 h-2 rounded-full ${spot.status === SpotStatus.WET ? 'bg-blue-500' : spot.status === SpotStatus.CROWDED ? 'bg-amber-500' : 'bg-green-500'} shadow-[0_0_8px_currentColor] z-10`} />
-                             <div className="mt-auto z-10 space-y-1 relative">
-                                <h3 className="text-sm font-black italic uppercase text-white leading-none pr-4 break-words">{spot.name}</h3>
-                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest"><MapPin size={10} className="text-indigo-400" /> {(spot.distance! / 1000).toFixed(1)}KM</div>
+      
+      {/* Quick Info Sheet */}
+      {activeSheet === 'quick-info' && selectedSpot && (
+           <div className="absolute bottom-0 left-0 w-full z-50 p-4 pb-8 animate-view origin-bottom pointer-events-auto">
+               <div className="bg-[#1a1a1a] border border-white/10 rounded-3xl p-5 shadow-2xl relative overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={(e) => handleCloseCardRef.current(e)} className="absolute top-4 right-4 p-2 bg-black/40 rounded-full text-slate-400 hover:text-white"><X size={18} /></button>
+                    
+                    <div className="flex gap-4 mb-4">
+                        <div className="w-20 h-20 rounded-2xl bg-black overflow-hidden shrink-0">
+                             <img src={selectedSpot.images?.[0] || `https://picsum.photos/seed/${selectedSpot.id}/200`} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex-1 min-w-0 pt-1">
+                             <div className="flex items-center gap-2 mb-1">
+                                 <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${selectedSpot.type === Discipline.SKATE ? 'bg-indigo-500/10 text-indigo-400' : 'bg-purple-500/10 text-purple-400'}`}>{selectedSpot.type}</span>
+                                 {selectedSpot.isVerified && <span className="text-[9px] font-bold text-green-400 flex items-center gap-0.5"><ShieldCheck size={10} /> Verified</span>}
                              </div>
-                             <div className="absolute inset-0 z-0"><img src={spot.images?.[0] || `https://picsum.photos/seed/${spot.id}/200`} className="w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-opacity" /><div className="absolute inset-0 bg-gradient-to-t from-[#0b0c10] via-[#0b0c10]/50 to-transparent" /></div>
-                          </div>
-                      ))}
-                      {hasMoreSpots && <button onClick={handleShowMore} className="col-span-2 py-6 rounded-[2rem] border border-white/10 bg-[#0b0c10] flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-400 hover:bg-slate-800 hover:text-white transition-all active:scale-95 group"><span className="group-hover:scale-105 transition-transform">Load More Sectors ({filteredSpots.length - visibleCount})</span></button>}
+                             <h3 className="text-xl font-black italic uppercase text-white leading-none truncate">{selectedSpot.name}</h3>
+                             <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 flex items-center gap-1"><MapPin size={10} /> {selectedSpot.location.address}</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                        <button onClick={handleCheckIn} disabled={isCheckedIn} className={`col-span-2 py-3 rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 transition-all ${isCheckedIn ? 'bg-green-500 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}>
+                            {isCheckedIn ? <CheckCircle2 size={14} /> : <MapPin size={14} />} {isCheckedIn ? 'Checked In' : 'Check In'}
+                        </button>
+                        <button onClick={handleNavigate} className="py-3 bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-slate-700">
+                             <Navigation size={14} />
+                        </button>
+                        <button onClick={() => setActiveModal('create-session')} className="py-3 bg-slate-800 text-white rounded-xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-slate-700">
+                             <Users size={14} />
+                        </button>
+                    </div>
+                    
+                    <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
+                        {spotSessions.length > 0 ? spotSessions.map(s => (
+                             <div key={s.id} onClick={() => handleJoinSession(s.id)} className="shrink-0 w-48 bg-black/50 border border-white/5 rounded-xl p-3 cursor-pointer hover:bg-slate-900 transition-colors">
+                                 <div className="text-[10px] font-bold text-indigo-400 uppercase mb-1">{s.time}</div>
+                                 <div className="text-xs font-black text-white italic truncate">{s.title}</div>
+                             </div>
+                        )) : (
+                             <div className="w-full text-center py-2 text-[10px] text-slate-600 font-bold uppercase">No Active Sessions</div>
+                        )}
+                    </div>
+               </div>
+           </div>
+      )}
+      
+      {/* View Mode: GRID (State Segregated) */}
+      {viewMode === 'grid' && (
+          <div className="absolute inset-0 z-20 pt-28 pb-32 px-4 overflow-y-auto hide-scrollbar bg-[#020202] pointer-events-auto">
+               {!gridActiveState ? (
+                   // Top Level: State List
+                   <div className="space-y-4">
+                       <h2 className="text-lg font-black italic uppercase text-white tracking-tighter mb-4 pl-2">Select Sector</h2>
+                       <div className="grid grid-cols-1 gap-4">
+                           {sortedStates.map(state => (
+                               <DrillDownCard 
+                                   key={state}
+                                   title={state}
+                                   count={spotsByState[state]?.length || 0}
+                                   imageUrl={STATE_IMAGES[state]}
+                                   type="state"
+                                   onClick={() => { 
+                                       setGridActiveState(state); 
+                                       triggerHaptic('medium'); 
+                                   }}
+                               />
+                           ))}
+                       </div>
+                   </div>
+               ) : (
+                   // Drill Down: Spots in State
+                   <div className="space-y-4">
+                       <button 
+                           onClick={() => { setGridActiveState(null); triggerHaptic('light'); }}
+                           className="flex items-center gap-2 text-slate-500 mb-4 pl-1 hover:text-white transition-colors"
+                       >
+                           <ChevronLeft size={16} /> Back to Sectors
+                       </button>
+                       
+                       <div className="mb-4 pl-1">
+                           <h2 className="text-2xl font-black italic uppercase text-white tracking-tighter">{gridActiveState}</h2>
+                           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{spotsByState[gridActiveState]?.length} Spots Detected</p>
+                       </div>
+
+                       <div className="grid grid-cols-1 gap-4">
+                           {gridDisplaySpots.map(spot => (
+                               <SpotCard key={spot.id} spot={spot} onClick={() => handleSpotSelectRef.current(spot)} />
+                           ))}
+                       </div>
+                       {hasMoreGridSpots && (
+                          <button onClick={handleShowMore} className="w-full py-4 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors bg-slate-900/50 rounded-xl">
+                              Load More Spots
+                          </button>
+                       )}
+                   </div>
+               )}
+          </div>
+      )}
+
+      {/* Modals */}
+      {activeModal === 'add-spot' && (
+          <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-view pointer-events-auto">
+              <div className="w-full max-w-sm bg-[#1a1a1a] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
+                  <h2 className="text-xl font-black italic uppercase text-white">Pin New Spot</h2>
+                  <input type="text" placeholder="Spot Name" value={spotForm.name} onChange={e => setSpotForm({...spotForm, name: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                  <div className="flex gap-2">
+                      <button onClick={() => setSpotForm({...spotForm, type: Discipline.SKATE})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${spotForm.type === Discipline.SKATE ? 'bg-white text-black' : 'bg-slate-800 text-slate-400'}`}>Street</button>
+                      <button onClick={() => setSpotForm({...spotForm, type: Discipline.DOWNHILL})} className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase ${spotForm.type === Discipline.DOWNHILL ? 'bg-white text-black' : 'bg-slate-800 text-slate-400'}`}>Downhill</button>
+                  </div>
+                  <textarea placeholder="Description / Hazards" value={spotForm.description} onChange={e => setSpotForm({...spotForm, description: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none h-24 resize-none" />
+                  <div className="flex gap-2 pt-2">
+                      <button onClick={() => setActiveModal('none')} className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-black uppercase text-[10px]">Cancel</button>
+                      <button onClick={submitSpot} className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-black uppercase text-[10px]">Create Pin</button>
                   </div>
               </div>
           </div>
       )}
-
-      {activeSheet === 'quick-info' && selectedSpot && (
-        <div className="absolute bottom-0 left-0 w-full z-[60] pointer-events-none animate-sheet">
-           <div className="pointer-events-auto w-full bg-[#0b0c10] border-t border-white/10 rounded-t-[2.5rem] p-6 pb-[calc(env(safe-area-inset-bottom)+5rem)] shadow-2xl relative">
-              <div className="w-12 h-1 bg-slate-800 rounded-full mx-auto mb-6" />
-              <div className="absolute -top-14 right-6 pointer-events-auto animate-modal"><button onClick={(e) => handleCloseCard(e)} className="w-12 h-12 bg-[#0b0c10]/90 backdrop-blur-md text-white rounded-full border border-white/10 flex items-center justify-center shadow-2xl active:scale-90 transition-all hover:bg-slate-800"><Minimize2 size={20} /></button></div>
-              <div className="flex gap-5 items-start">
-                  <div onClick={() => setActiveSheet('full-detail')} className="w-24 h-24 rounded-2xl bg-slate-800 overflow-hidden shrink-0 relative border border-white/5 group cursor-pointer"><img src={selectedSpot.images?.[0]} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" /></div>
-                  <div className="flex-1 min-w-0 pt-1">
-                      <div className="flex justify-between items-start mb-1"><h3 onClick={() => setActiveSheet('full-detail')} className="text-2xl font-black italic text-white uppercase truncate leading-none tracking-tight cursor-pointer hover:text-indigo-400 transition-colors">{selectedSpot.name}</h3><button onClick={(e) => handleCloseCard(e)} className="p-1 -mr-2 text-slate-600 hover:text-white"><X size={20} /></button></div>
-                      <div className="flex items-center gap-3 mb-4"><span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{selectedSpot.type}</span><div className="w-1 h-1 bg-slate-700 rounded-full" /><span className={`text-[10px] font-black font-mono uppercase tracking-wide ${selectedSpot.status === SpotStatus.WET ? 'text-blue-400' : selectedSpot.status === SpotStatus.CROWDED ? 'text-amber-400' : 'text-green-400'}`}>{selectedSpot.status === SpotStatus.WET ? 'WET' : selectedSpot.status === SpotStatus.CROWDED ? 'HIGH_TRAFFIC' : 'PRIME'}</span><div className="w-1 h-1 bg-slate-700 rounded-full" /><div className="flex items-center gap-1.5"><MapPin size={10} className="text-slate-500" /><span className="text-[10px] text-slate-400 font-bold uppercase tracking-wide truncate max-w-[120px]">{(selectedSpot.distance! / 1000).toFixed(1)} KM</span></div></div>
-                      <div className="flex gap-2"><button onClick={() => setActiveSheet('full-detail')} className="flex-1 py-3 bg-white text-black rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all hover:bg-slate-200">View Intel</button><button onClick={handleCheckIn} disabled={isCheckedIn} className={`px-4 py-3 rounded-xl flex items-center justify-center active:scale-95 transition-all border ${isCheckedIn ? 'bg-green-900/20 border-green-500/30 text-green-400' : 'bg-slate-800 border-white/5 text-slate-300 hover:bg-slate-700'}`}>{isCheckedIn ? <CheckCircle2 size={16} /> : <MapPin size={16} />}</button></div>
+      
+      {/* Create Session Modal */}
+      {activeModal === 'create-session' && (
+          <div className="absolute inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-6 animate-view pointer-events-auto">
+              <div className="w-full max-w-sm bg-[#1a1a1a] border border-white/10 rounded-3xl p-6 shadow-2xl space-y-4">
+                  <h2 className="text-xl font-black italic uppercase text-white">Start Session</h2>
+                  <input type="text" placeholder="Session Title" value={sessionForm.title} onChange={e => setSessionForm({...sessionForm, title: e.target.value})} className="w-full bg-black border border-white/10 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-indigo-500" />
+                  <div className="grid grid-cols-2 gap-2">
+                      <input type="date" value={sessionForm.date} onChange={e => setSessionForm({...sessionForm, date: e.target.value})} className="bg-black border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none" />
+                      <input type="time" value={sessionForm.time} onChange={e => setSessionForm({...sessionForm, time: e.target.value})} className="bg-black border border-white/10 rounded-xl p-3 text-xs text-white focus:outline-none" />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                      <button onClick={() => setActiveModal('none')} className="flex-1 py-3 rounded-xl bg-slate-800 text-white font-black uppercase text-[10px]">Cancel</button>
+                      <button onClick={submitSession} className="flex-1 py-3 rounded-xl bg-indigo-600 text-white font-black uppercase text-[10px]">Go Live</button>
                   </div>
               </div>
-           </div>
-        </div>
-      )}
-
-      {activeSheet === 'full-detail' && selectedSpot && (
-        <div className="absolute inset-0 z-[100] bg-[#020202] overflow-y-auto animate-sheet h-full">
-           <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
-           <div className="h-64 w-full relative z-10">
-               <img src={selectedSpot.images?.[0] || 'https://images.unsplash.com/photo-1520156584189-1e4529f8c9b3?w=800'} className="w-full h-full object-cover opacity-60" />
-               <div className="absolute inset-0 bg-gradient-to-t from-[#020202] via-[#020202]/50 to-transparent" />
-               <button onClick={() => setActiveSheet('none')} className="absolute top-6 left-4 w-10 h-10 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white border border-white/10 z-20 active:scale-90 transition-all"><ChevronLeft size={24} /></button>
-               <button onClick={() => setActiveSheet('none')} className="absolute top-6 right-4 w-10 h-10 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white border border-white/10 z-20 active:scale-90"><X size={20} /></button>
-               <div className="absolute bottom-4 left-6 right-6 z-10">
-                   <div className="flex gap-2 mb-2"><span className="bg-indigo-600 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white">{selectedSpot.type}</span><span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest text-white flex items-center gap-1 ${selectedSpot.status === SpotStatus.WET ? 'bg-blue-500' : 'bg-green-500'}`}>{selectedSpot.status === SpotStatus.WET ? <Droplets size={10} /> : <Zap size={10} />}{selectedSpot.status || 'Active'}</span></div>
-                   <h1 className="text-4xl font-black italic uppercase text-white leading-none mb-2 tracking-tight">{selectedSpot.name}</h1>
-                   <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-wide"><span className="flex items-center gap-1"><MapPin size={12} className="text-indigo-400" /> {(selectedSpot.distance! / 1000).toFixed(1)} KM Away</span><span className="flex items-center gap-1"><Star size={12} className="text-yellow-500 fill-yellow-500" /> {selectedSpot.rating}</span></div>
-               </div>
-           </div>
-
-           <div className="p-6 space-y-8 pb-32 relative z-10">
-               <div className="grid grid-cols-2 gap-3">
-                   <button onClick={handleNavigate} className="py-3 bg-white text-black rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform"><Navigation size={14} /> Navigate</button>
-                   <button onClick={handleCheckIn} disabled={isCheckedIn} className={`py-3 border rounded-xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 active:scale-95 transition-transform ${isCheckedIn ? 'bg-green-900/20 border-green-500/50 text-green-400' : 'bg-[#0b0c10] border-slate-800 text-white'}`}>{isCheckedIn ? <CheckCircle2 size={14} /> : <MapPin size={14} />} {isCheckedIn ? 'Checked In' : 'Check In'}</button>
-               </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                   <div className="bg-[#0b0c10] border border-white/10 rounded-2xl p-4 space-y-2">
-                       <div className="flex items-center gap-2 text-indigo-400 text-[10px] font-black uppercase tracking-widest"><Cloud size={12} /> Live Conditions</div>
-                       <div className="flex items-end gap-2"><span className="text-2xl font-black text-white">{weather.temp}°</span><span className="text-xs font-bold text-slate-500 mb-1">{weather.condition}</span></div>
-                       <div className="flex gap-3 text-[9px] font-bold text-slate-500"><span className="flex items-center gap-1"><Wind size={10} /> {weather.wind}km/h</span><span className="flex items-center gap-1"><Droplets size={10} /> {weather.humidity}%</span></div>
-                   </div>
-                   <div className="bg-[#0b0c10] border border-white/10 rounded-2xl p-4 space-y-2">
-                       <div className="flex items-center gap-2 text-green-400 text-[10px] font-black uppercase tracking-widest"><Users size={12} /> Active Now</div>
-                       <div className="flex -space-x-2 pt-1">
-                           {[1,2,3].map(i => <div key={i} className="w-8 h-8 rounded-full border-2 border-[#0b0c10] bg-slate-800 flex items-center justify-center text-[8px] text-white font-bold"><img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${i}`} className="w-full h-full rounded-full" /></div>)}
-                           <div className="w-8 h-8 rounded-full border-2 border-[#0b0c10] bg-slate-800 flex items-center justify-center text-[8px] text-slate-400 font-bold">+12</div>
-                       </div>
-                   </div>
-               </div>
-
-               <div className="space-y-6">
-                   <section className="space-y-3">
-                       <div className="flex justify-between items-center"><h3 className="text-sm font-black uppercase italic text-white tracking-widest">Active Sessions</h3><button onClick={() => setActiveModal('create-session')} className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest hover:text-white flex items-center gap-1"><Plus size={12} /> Plan Meet</button></div>
-                       {spotSessions.length > 0 ? (
-                           spotSessions.map(session => {
-                             const isJoined = session.participants?.includes(user?.id || '');
-                             return (
-                               <div key={session.id} className="bg-[#0b0c10] border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
-                                   <div className="flex justify-between items-start mb-3">
-                                       <div>
-                                            <h4 className="text-xs font-black uppercase text-white italic">{session.title}</h4>
-                                            <div className="flex gap-2 text-[9px] font-bold text-slate-500 uppercase mt-1"><span className="flex items-center gap-1"><Clock size={10} /> {session.time}</span><span className="flex items-center gap-1"><Calendar size={10} /> {session.date}</span></div>
-                                       </div>
-                                       <button onClick={() => handleJoinSession(session.id)} disabled={isJoined} className={`px-3 py-1.5 rounded text-[9px] font-black uppercase transition-all ${isJoined ? 'bg-green-900/20 text-green-400' : 'bg-indigo-600 text-white'}`}>{isJoined ? 'Joined' : 'Join'}</button>
-                                   </div>
-                                   {session.notes && <div className="pt-2 border-t border-white/5 mt-1"><p className="text-[9px] text-slate-400 italic">"{session.notes}"</p></div>}
-                                   {session.intent && <div className="mt-2 flex"><span className="text-[8px] font-black uppercase tracking-widest bg-slate-800 text-slate-400 px-2 py-0.5 rounded border border-slate-700">Vibe: {session.intent}</span></div>}
-                               </div>
-                             );
-                           })
-                       ) : <div className="text-center py-6 bg-slate-900/20 rounded-2xl border border-dashed border-slate-800"><p className="text-[10px] font-bold text-slate-600 uppercase">No active sessions.</p></div>}
-                   </section>
-
-                   <section className="space-y-3">
-                       <div className="flex justify-between items-center"><h3 className="text-sm font-black uppercase italic text-white tracking-widest">Challenges</h3><button onClick={() => setActiveModal('create-challenge')} className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest hover:text-white flex items-center gap-1"><Plus size={12} /> Create</button></div>
-                       <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
-                           {spotChallenges.map(challenge => (
-                               <div key={challenge.id} className="min-w-[200px] bg-[#0b0c10] border border-white/10 rounded-2xl p-4 relative overflow-hidden">
-                                   <div className="absolute top-0 right-0 p-2 opacity-10"><Trophy size={48} /></div>
-                                   <h4 className="text-xs font-black uppercase text-white italic mb-1">{challenge.title}</h4>
-                                   <p className="text-[9px] text-slate-400 font-medium line-clamp-2 mb-3">{challenge.description}</p>
-                                   <div className="flex justify-between items-center"><span className="text-[9px] font-black text-yellow-500 uppercase">{challenge.xpReward} XP</span><button className="p-1.5 bg-slate-800 rounded text-white"><ArrowRight size={12} /></button></div>
-                               </div>
-                           ))}
-                           {spotChallenges.length === 0 && <div className="w-full text-center py-6 bg-slate-900/20 rounded-2xl border border-dashed border-slate-800"><p className="text-[10px] font-bold text-slate-600 uppercase">No active challenges.</p></div>}
-                       </div>
-                   </section>
-
-                   <section className="space-y-3 pb-8">
-                       <div className="flex justify-between items-center"><h3 className="text-sm font-black uppercase italic text-white tracking-widest">Intel</h3><button onClick={() => setActiveModal('add-intel')} className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest hover:text-white flex items-center gap-1"><MessageSquare size={12} /> Add Intel</button></div>
-                       <div className="space-y-3">
-                           {localReviews.length > 0 ? localReviews.map((review) => (
-                               <div key={review.id} className="bg-[#0b0c10] border border-white/10 rounded-2xl p-4">
-                                   <div className="flex justify-between items-start mb-2"><div className="flex items-center gap-2"><div className="w-6 h-6 rounded-full bg-slate-800"><img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${review.userId}`} className="rounded-full" /></div><span className="text-[10px] font-black uppercase text-white">{review.userName}</span></div><div className="flex text-yellow-500">{[...Array(review.rating)].map((_, i) => <Star key={i} size={10} fill="currentColor" />)}</div></div>
-                                   <p className="text-[10px] text-slate-400 leading-relaxed">"{review.text}"</p>
-                               </div>
-                           )) : <div className="text-center py-6 bg-slate-900/20 rounded-2xl border border-dashed border-slate-800"><p className="text-[10px] font-bold text-slate-600 uppercase">No intel yet. Be the first.</p></div>}
-                       </div>
-                   </section>
-               </div>
-           </div>
-        </div>
-      )}
-
-      {/* --- MODALS --- */}
-      {activeModal === 'create-session' && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-modal">
-            <div className="bg-[#0b0c10] border border-white/10 rounded-[2.5rem] p-8 w-full max-w-sm space-y-6 shadow-2xl relative">
-                <div className="flex justify-between items-center mb-2"><h3 className="text-xl font-black uppercase italic text-white tracking-tight">Plan Meet</h3><button onClick={() => setActiveModal('none')} className="p-2 -mr-2 text-slate-500 hover:text-white transition-colors"><X size={20} /></button></div>
-                <div className="space-y-4">
-                    <div className="space-y-1"><input type="text" placeholder="Session Title" className="w-full bg-black rounded-2xl p-4 text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border border-white/5" value={sessionForm.title} onChange={e => setSessionForm({...sessionForm, title: e.target.value})} /></div>
-                    <div className="space-y-2">
-                        <label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest ml-1">Session Vibe</label>
-                        <div className="grid grid-cols-4 gap-2">
-                            {[{ id: 'Chill', icon: Coffee, color: 'text-emerald-400', bg: 'bg-emerald-500/20', border: 'border-emerald-500/50' }, { id: 'Practice', icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/50' }, { id: 'Filming', icon: Video, color: 'text-amber-400', bg: 'bg-amber-500/20', border: 'border-amber-500/50' }, { id: 'Battle', icon: Swords, color: 'text-red-400', bg: 'bg-red-500/20', border: 'border-red-500/50' }].map((item) => {
-                                const isSelected = sessionForm.intent === item.id;
-                                const Icon = item.icon;
-                                return (
-                                    <button key={item.id} onClick={() => setSessionForm({...sessionForm, intent: item.id})} className={`relative overflow-hidden flex flex-col items-center justify-center py-3 rounded-2xl border transition-all duration-300 group ${isSelected ? `bg-slate-800 ${item.border} shadow-[0_0_15px_rgba(0,0,0,0.5)] scale-105 z-10` : 'bg-slate-900 border-slate-800 opacity-60 hover:opacity-100 hover:bg-slate-800 hover:scale-105'}`}>{isSelected && <div className={`absolute inset-0 ${item.bg} opacity-20`} />}<div className={`transition-transform duration-300 ${isSelected ? 'scale-110 ' + item.color : 'text-slate-500 group-hover:text-slate-300'}`}><Icon size={20} strokeWidth={isSelected ? 3 : 2} /></div><span className={`text-[8px] font-black uppercase tracking-widest mt-2 transition-colors ${isSelected ? 'text-white' : 'text-slate-600 group-hover:text-slate-400'}`}>{item.id}</span></button>
-                                )
-                            })}
-                        </div>
-                    </div>
-                    <div className="flex gap-3">
-                        <div className="flex-1 space-y-1"><label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest ml-1">Date</label><input type="date" className="w-full bg-black rounded-2xl p-4 text-sm font-bold text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border border-white/5 uppercase" value={sessionForm.date} onChange={e => setSessionForm({...sessionForm, date: e.target.value})} /></div>
-                        <div className="flex-1 space-y-1"><label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest ml-1">Time</label><input type="time" className="w-full bg-black rounded-2xl p-4 text-sm font-bold text-white focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border border-white/5 uppercase" value={sessionForm.time} onChange={e => setSessionForm({...sessionForm, time: e.target.value})} /></div>
-                    </div>
-                    <div className="space-y-1"><textarea placeholder="Notes & Details..." rows={3} className="w-full bg-black rounded-2xl p-4 text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 border border-white/5 resize-none" value={sessionForm.notes} onChange={e => setSessionForm({...sessionForm, notes: e.target.value})} /></div>
-                    <button onClick={submitSession} className="w-full bg-indigo-600 py-4 rounded-2xl text-xs font-black uppercase text-white tracking-widest shadow-lg shadow-indigo-600/20 active:scale-95 transition-all mt-2 hover:bg-indigo-500">Create Session</button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {activeModal === 'create-challenge' && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-modal">
-            <div className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 w-full max-w-xs space-y-4">
-                <div className="flex justify-between items-center"><h3 className="text-lg font-black uppercase italic text-white">Create Challenge</h3><button onClick={() => setActiveModal('none')}><X size={20} className="text-slate-500" /></button></div>
-                <div className="space-y-3">
-                    <input type="text" placeholder="Challenge Title" className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white" value={challengeForm.title} onChange={e => setChallengeForm({...challengeForm, title: e.target.value})} />
-                    <textarea placeholder="Description" rows={3} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white" value={challengeForm.desc} onChange={e => setChallengeForm({...challengeForm, desc: e.target.value})} />
-                    <button onClick={submitChallenge} className="w-full bg-green-600 py-3 rounded-xl text-xs font-black uppercase text-white tracking-widest mt-2">Publish Challenge</button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {activeModal === 'add-intel' && (
-        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-modal">
-            <div className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 w-full max-w-xs space-y-4">
-                <div className="flex justify-between items-center"><h3 className="text-lg font-black uppercase italic text-white">Add Intel</h3><button onClick={() => setActiveModal('none')}><X size={20} className="text-slate-500" /></button></div>
-                <div className="space-y-3">
-                    <div className="flex justify-center gap-2">{[1,2,3,4,5].map(star => (<button key={star} onClick={() => setIntelForm({...intelForm, rating: star})} className={star <= intelForm.rating ? 'text-yellow-500' : 'text-slate-700'}><Star size={24} fill="currentColor" /></button>))}</div>
-                    <textarea placeholder="Share local tips..." rows={3} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm text-white" value={intelForm.text} onChange={e => setIntelForm({...intelForm, text: e.target.value})} />
-                    <button onClick={submitIntel} className="w-full bg-blue-600 py-3 rounded-xl text-xs font-black uppercase text-white tracking-widest mt-2">Post Intel</button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {activeModal === 'add-spot' && (
-           <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-modal">
-               <div className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 w-full max-w-xs space-y-4 shadow-2xl">
-                   <div className="flex justify-between items-center"><h3 className="text-lg font-black uppercase italic text-white">Add New Spot</h3><button onClick={() => setActiveModal('none')}><X size={20} className="text-slate-500" /></button></div>
-                   <div className="space-y-3">
-                       <div className="bg-slate-900/50 p-3 rounded-xl border border-white/5 flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400"><MapPin size={20} /></div><div><p className="text-[10px] font-bold uppercase text-slate-500 tracking-widest">Location</p><p className="text-xs font-bold text-white">Current GPS Position</p></div></div>
-                       <input type="text" placeholder="Spot Name (e.g. 'The Ledges')" className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500" value={spotForm.name} onChange={e => setSpotForm({...spotForm, name: e.target.value})} />
-                       <div className="grid grid-cols-2 gap-2">{[Discipline.SKATE, Discipline.DOWNHILL].map(d => (<button key={d} onClick={() => setSpotForm({...spotForm, type: d})} className={`py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${spotForm.type === d ? 'bg-white text-black border-white' : 'bg-slate-900 text-slate-500 border-slate-800'}`}>{d}</button>))}</div>
-                       <textarea placeholder="Description / Hazards..." rows={3} className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-sm font-medium text-white placeholder:text-slate-600 focus:outline-none focus:border-indigo-500 resize-none" value={spotForm.description} onChange={e => setSpotForm({...spotForm, description: e.target.value})} />
-                       <button onClick={submitSpot} className="w-full bg-indigo-600 py-3 rounded-xl text-xs font-black uppercase text-white tracking-widest mt-2 hover:bg-indigo-500 active:scale-95 transition-all shadow-lg shadow-indigo-500/20">Submit Spot</button>
-                   </div>
-               </div>
-           </div>
+          </div>
       )}
 
     </div>

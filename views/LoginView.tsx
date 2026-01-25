@@ -95,7 +95,7 @@ const LoginView: React.FC<LoginViewProps> = ({ onLogin, onShowPrivacy }) => {
           <div className="flex items-center gap-3 mt-6">
               <div className="h-px w-8 bg-indigo-500/50"></div>
               <p className="text-indigo-300 font-bold text-[10px] tracking-[0.3em] uppercase drop-shadow-[0_0_8px_rgba(99,102,241,0.6)]">
-                Skate • Crews • Challenges
+                Core Skate Network
               </p>
               <div className="h-px w-8 bg-indigo-500/50"></div>
           </div>

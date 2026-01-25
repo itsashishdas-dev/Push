@@ -26,6 +26,7 @@ interface AppState {
   refreshSpots: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   updateUser: (user: User) => void;
+  addNewSpot: (spotData: Partial<Spot>) => Promise<Spot>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -102,5 +103,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   updateUser: (user: User) => {
       set({ user });
+  },
+
+  addNewSpot: async (spotData: Partial<Spot>) => {
+      const newSpot = await backend.addSpot(spotData);
+      // Refresh spots to ensure state consistency
+      await get().refreshSpots();
+      return newSpot;
   }
 }));

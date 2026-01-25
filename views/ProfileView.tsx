@@ -1,10 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { Settings, Lock, Shield, Trophy, Zap, Users, MapPin, ChevronRight, Crown, Crosshair, BarChart3, Plus, Hexagon, Medal, Award, Activity, ShieldCheck, User as UserIcon } from 'lucide-react';
+import { Settings, Lock, Shield, Trophy, Zap, Users, MapPin, ChevronRight, Crown, Crosshair, BarChart3, Plus, Hexagon, Medal, Award, Activity, ShieldCheck, User as UserIcon, LogOut, Bell, Volume2, ShieldAlert, UserCog, X, Save, Type, Footprints } from 'lucide-react';
 import { backend } from '../services/mockBackend';
 import { User as UserType, Crew, Discipline } from '../types';
 import { COLLECTIBLES_DATABASE, MOCK_CHALLENGES } from '../constants';
 import { triggerHaptic } from '../utils/haptics';
+import { useAppStore } from '../store';
+import { playSound } from '../utils/audio';
 
 interface ProfileViewProps {
   onLogout: () => void;
@@ -12,23 +14,59 @@ interface ProfileViewProps {
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => {
-  const [user, setUser] = useState<UserType | null>(null);
+  const { user, updateUser } = useAppStore();
   const [crew, setCrew] = useState<Crew | null>(null);
   const [activeSection, setActiveSection] = useState<'overview' | 'locker'>('overview');
+  const [showSettings, setShowSettings] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Edit Form State
+  const [editForm, setEditForm] = useState({
+      name: '',
+      bio: '',
+      stance: 'regular' as 'regular' | 'goofy'
+  });
 
   useEffect(() => {
     setMounted(true);
     const loadData = async () => {
-        const u = await backend.getUser();
-        setUser(u);
-        if (u.crewId) {
-            const c = await backend.getUserCrew(u.crewId);
+        if (user?.crewId) {
+            const c = await backend.getUserCrew(user.crewId);
             setCrew(c);
         }
     };
     loadData();
-  }, []);
+  }, [user]);
+
+  // Initialize edit form when settings open
+  useEffect(() => {
+      if (showSettings && user) {
+          setEditForm({
+              name: user.name,
+              bio: user.bio || '',
+              stance: user.stance || 'regular'
+          });
+          setIsEditing(false);
+      }
+  }, [showSettings, user]);
+
+  const handleSaveProfile = async () => {
+      if (!user) return;
+      triggerHaptic('success');
+      playSound('success');
+      
+      const updatedUser = { 
+          ...user, 
+          name: editForm.name,
+          bio: editForm.bio,
+          stance: editForm.stance
+      };
+      
+      await backend.updateUser(updatedUser);
+      updateUser(updatedUser);
+      setIsEditing(false);
+  };
 
   if (!user) return null;
 
@@ -45,6 +83,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
   const navigateToCrew = () => {
       triggerHaptic('medium');
       setActiveTab('crew');
+  };
+
+  const handleLogout = () => {
+      triggerHaptic('medium');
+      setShowSettings(false);
+      onLogout();
   };
 
   return (
@@ -72,8 +116,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
                </div>
                
                <button 
-                 onClick={onLogout} 
-                 className="w-10 h-10 bg-[#0b0c10] border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95"
+                 onClick={() => { setShowSettings(true); triggerHaptic('light'); }} 
+                 className="w-10 h-10 bg-[#0b0c10] border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
                >
                   <Settings size={18} />
                </button>
@@ -279,7 +323,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
                            >
                                <div className={`absolute inset-0 bg-gradient-to-b ${unlocked ? 'from-indigo-900/20 to-black' : 'from-transparent to-black'} z-0`} />
                                
-                               <div className="absolute inset-0 flex items-center justify-center p-6 z-10">
+                               <div className="absolute inset-0 flex items-center justify-center p-12 z-10">
                                    <img 
                                      src={item.imageUrl} 
                                      className={`w-full h-full object-contain transition-transform duration-500 ${unlocked ? 'group-hover:scale-110 drop-shadow-[0_8px_16px_rgba(0,0,0,0.4)]' : 'grayscale blur-[2px] opacity-50'}`} 
@@ -315,6 +359,113 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
                    ))}
                </div>
            </div>
+       )}
+
+       {/* --- SETTINGS MODAL --- */}
+       {showSettings && (
+         <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center animate-view" onClick={() => setShowSettings(false)}>
+            <div className="w-full max-w-sm bg-[#1a1a1a] border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2rem] p-6 shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                {/* Header */}
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-black italic uppercase text-white tracking-tight">{isEditing ? 'EDIT PROFILE' : 'SYSTEM CONFIG'}</h3>
+                    <button onClick={() => { setIsEditing(false); setShowSettings(false); }} className="p-2 bg-black/40 rounded-full text-slate-400 hover:text-white active:scale-95 transition-transform"><X size={20} /></button>
+                </div>
+
+                {isEditing ? (
+                    <div className="space-y-4 animate-view">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                <Type size={12} /> Codename
+                            </label>
+                            <input 
+                                type="text"
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                                className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 uppercase"
+                                placeholder="ENTER NAME"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                <Type size={12} /> Bio
+                            </label>
+                            <textarea 
+                                value={editForm.bio}
+                                onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
+                                className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-xs font-medium text-white focus:outline-none focus:border-indigo-500 resize-none h-24"
+                                placeholder="ENTER BIO..."
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                <Footprints size={12} /> Stance
+                            </label>
+                            <div className="flex bg-[#0b0c10] p-1 rounded-xl border border-white/10">
+                                {['regular', 'goofy'].map(s => (
+                                    <button 
+                                        key={s}
+                                        onClick={() => setEditForm({...editForm, stance: s as any})}
+                                        className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${editForm.stance === s ? 'bg-white text-black shadow-lg' : 'text-slate-500'}`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="pt-4 flex gap-3">
+                            <button onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
+                            <button onClick={handleSaveProfile} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
+                                <Save size={14} /> Save Config
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {/* Options */}
+                        <div className="space-y-2">
+                            <button onClick={() => setIsEditing(true)} className="w-full p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex items-center gap-4 hover:bg-slate-900 transition-colors group">
+                                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-indigo-600 transition-all"><UserCog size={18} /></div>
+                                <div className="text-left flex-1"><div className="text-sm font-bold text-white uppercase">Edit Identity</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Update Profile Data</div></div>
+                                <ChevronRight size={16} className="text-slate-600" />
+                            </button>
+
+                            <div className="flex gap-2">
+                                <button className="flex-1 p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex flex-col items-center gap-2 hover:bg-slate-900 transition-colors">
+                                    <Bell size={20} className="text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Alerts: ON</span>
+                                </button>
+                                <button className="flex-1 p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex flex-col items-center gap-2 hover:bg-slate-900 transition-colors">
+                                    <Volume2 size={20} className="text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">SFX: ON</span>
+                                </button>
+                            </div>
+
+                            {user.isAdmin && (
+                                <button onClick={() => setActiveTab('admin')} className="w-full p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex items-center gap-4 hover:bg-slate-900 transition-colors group">
+                                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-amber-500 group-hover:text-white group-hover:bg-amber-600 transition-all"><ShieldAlert size={18} /></div>
+                                    <div className="text-left flex-1"><div className="text-sm font-bold text-white uppercase">Admin Console</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Restricted Access</div></div>
+                                    <ChevronRight size={16} className="text-slate-600" />
+                                </button>
+                            )}
+
+                            <div className="h-px bg-white/5 my-2" />
+
+                            <button onClick={handleLogout} className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 hover:bg-red-500/20 transition-colors group">
+                                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 group-hover:bg-red-500 group-hover:text-white transition-all"><LogOut size={18} /></div>
+                                <div className="text-left flex-1"><div className="text-sm font-bold text-red-400 uppercase">Terminate Session</div><div className="text-[9px] font-bold text-red-500/50 uppercase tracking-widest">Log Out</div></div>
+                            </button>
+                        </div>
+                        
+                        <div className="mt-6 text-center">
+                            <p className="text-[8px] font-mono text-slate-600 uppercase">PUSH OS v1.8 // ID: {user.id}</p>
+                        </div>
+                    </>
+                )}
+            </div>
+         </div>
        )}
     </div>
   );
