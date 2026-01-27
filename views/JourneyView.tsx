@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { backend } from '../services/mockBackend';
 import { useAppStore } from '../store';
 import { DailyNote, ExtendedSession, Challenge, Discipline, SpotStatus } from '../types';
@@ -7,30 +7,52 @@ import {
   FileText, MapPin, Calendar, Clock, Edit2, 
   Send, Terminal, Bookmark, Trophy, Zap, 
   Activity, ArrowRight, Video, Target, TrendingUp,
-  AlertTriangle
+  AlertTriangle, Camera, X
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
+import SkillTree from '../components/SkillTree';
 
 const JourneyView: React.FC = () => {
   const { user, sessions, challenges, skills, notes, initializeData } = useAppStore();
   const [noteInput, setNoteInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'timeline' | 'upcoming'>('timeline');
+  const [activeTab, setActiveTab] = useState<'timeline' | 'upcoming' | 'tech_tree'>('timeline');
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
       initializeData();
   }, []);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files[0]) {
+          const file = e.target.files[0];
+          setMediaFile(file);
+          setMediaPreview(URL.createObjectURL(file));
+          triggerHaptic('light');
+      }
+  };
+
   const handleAddNote = async () => {
-      if (!noteInput.trim()) return;
+      if (!noteInput.trim() && !mediaFile) return;
       setIsSubmitting(true);
       triggerHaptic('medium');
-      await backend.saveDailyNote(noteInput);
+      playSound('log_click'); 
+      
+      const mediaUrl = mediaFile ? mediaPreview : undefined; // In real app, this would be the uploaded URL
+      const mediaType = mediaFile ? (mediaFile.type.startsWith('video') ? 'video' : 'image') : undefined;
+
+      await backend.saveDailyNote(noteInput, mediaUrl, mediaType);
       await initializeData(); 
+      
       setNoteInput('');
+      setMediaFile(null);
+      setMediaPreview(null);
       setIsSubmitting(false);
-      playSound('success');
+      
+      setTimeout(() => playSound('success'), 300);
   };
 
   const skillStats = useMemo(() => {
@@ -49,28 +71,20 @@ const JourneyView: React.FC = () => {
 
   const timeline = useMemo(() => {
       const all: any[] = [];
-      
       notes.forEach(n => all.push({ ...n, type: 'note', sortDate: new Date(n.timestamp).getTime() }));
-      
       sessions.forEach(s => {
           if (new Date(s.date) < new Date()) {
               all.push({ ...s, type: 'session', sortDate: new Date(`${s.date}T${s.time}`).getTime() });
           }
       });
-
       if (user) {
           user.completedChallengeIds.forEach(cid => {
               const challenge = challenges.find(c => c.id === cid);
               if (challenge) {
-                  all.push({ 
-                      ...challenge, 
-                      type: 'challenge', 
-                      sortDate: Date.now() - Math.random() * 1000000000 
-                  });
+                  all.push({ ...challenge, type: 'challenge', sortDate: Date.now() - Math.random() * 1000000000 });
               }
           });
       }
-
       return all.sort((a, b) => b.sortDate - a.sortDate);
   }, [notes, sessions, user, challenges]);
 
@@ -127,19 +141,31 @@ const JourneyView: React.FC = () => {
       <div className="px-6 py-4 shrink-0 z-10">
           <div className="flex bg-[#0b0c10] p-1 rounded-xl border border-white/10 backdrop-blur-md">
               <button 
-                onClick={() => { setActiveTab('timeline'); triggerHaptic('light'); }}
-                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'timeline' ? 'bg-white text-black shadow-lg' : 'text-slate-500'}`}
+                onClick={() => { setActiveTab('timeline'); triggerHaptic('light'); playSound('click'); }}
+                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'timeline' ? 'bg-white text-black shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
               >
                   <Activity size={12} /> Datastream
               </button>
               <button 
-                onClick={() => { setActiveTab('upcoming'); triggerHaptic('light'); }}
-                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'upcoming' ? 'bg-white text-black shadow-lg' : 'text-slate-500'}`}
+                onClick={() => { setActiveTab('upcoming'); triggerHaptic('light'); playSound('click'); }}
+                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'upcoming' ? 'bg-white text-black shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
               >
                   <Target size={12} /> Radar ({upcomingSessions.length})
               </button>
+              <button 
+                onClick={() => { setActiveTab('tech_tree'); triggerHaptic('light'); playSound('click'); }}
+                className={`flex-1 py-2.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${activeTab === 'tech_tree' ? 'bg-white text-black shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+              >
+                  <TrendingUp size={12} /> Tech Tree
+              </button>
           </div>
       </div>
+
+      {activeTab === 'tech_tree' && (
+          <div className="px-6 pb-6 relative z-10">
+              <SkillTree />
+          </div>
+      )}
 
       {activeTab === 'timeline' && (
           <div className="px-6 space-y-6 pb-6 relative z-10">
@@ -152,6 +178,7 @@ const JourneyView: React.FC = () => {
                           <Terminal size={12} className="text-indigo-400" />
                           <span className="text-[9px] font-mono text-indigo-400 uppercase tracking-widest">New Entry...</span>
                       </div>
+                      
                       <textarea 
                         value={noteInput}
                         onChange={(e) => setNoteInput(e.target.value)}
@@ -159,10 +186,27 @@ const JourneyView: React.FC = () => {
                         rows={2}
                         className="w-full bg-[#020202] rounded-xl p-3 text-xs font-medium text-white placeholder:text-slate-600 focus:outline-none resize-none font-mono leading-relaxed border border-white/5"
                       />
-                      <div className="flex justify-end mt-2">
+
+                      {mediaPreview && (
+                          <div className="relative mt-2 rounded-xl overflow-hidden aspect-video border border-white/10 bg-black">
+                              {mediaFile?.type.startsWith('video') ? (
+                                  <video src={mediaPreview} className="w-full h-full object-cover" autoPlay loop muted />
+                              ) : (
+                                  <img src={mediaPreview} className="w-full h-full object-cover" />
+                              )}
+                              <button onClick={() => { setMediaFile(null); setMediaPreview(null); }} className="absolute top-2 right-2 p-1 bg-black/60 rounded-full text-white border border-white/20"><X size={12} /></button>
+                          </div>
+                      )}
+
+                      <div className="flex justify-between items-center mt-2">
+                          <button onClick={() => fileInputRef.current?.click()} className="p-2 bg-[#151515] rounded-lg text-slate-400 hover:text-white border border-white/5 transition-colors">
+                              <Camera size={14} />
+                          </button>
+                          <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleFileSelect} />
+
                           <button 
                             onClick={handleAddNote}
-                            disabled={!noteInput.trim() || isSubmitting}
+                            disabled={(!noteInput.trim() && !mediaFile) || isSubmitting}
                             className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 py-2 text-[9px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50 transition-all active:scale-95"
                           >
                               {isSubmitting ? 'Saving...' : 'Commit Log'} <Send size={10} />
@@ -200,9 +244,18 @@ const JourneyView: React.FC = () => {
                               </div>
 
                               {item.type === 'note' && (
-                                  <p className="text-xs text-slate-300 font-mono leading-relaxed opacity-90">
-                                      "{item.text}"
-                                  </p>
+                                  <div>
+                                      {item.text && <p className="text-xs text-slate-300 font-mono leading-relaxed opacity-90 mb-2">"{item.text}"</p>}
+                                      {item.mediaUrl && (
+                                          <div className="rounded-xl overflow-hidden border border-white/10 aspect-video bg-black mt-2">
+                                              {item.mediaType === 'video' ? (
+                                                  <video src={item.mediaUrl} className="w-full h-full object-cover" controls />
+                                              ) : (
+                                                  <img src={item.mediaUrl} className="w-full h-full object-cover" />
+                                              )}
+                                          </div>
+                                      )}
+                                  </div>
                               )}
 
                               {item.type === 'session' && (

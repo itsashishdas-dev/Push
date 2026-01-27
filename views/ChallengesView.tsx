@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Challenge, ChallengeSubmission, Difficulty, Collectible, Crew } from '../types';
 import { backend } from '../services/mockBackend';
-import { Swords, Check, Video, Play, X, Crosshair, Users, Shield, ShieldCheck, ChevronRight, Plus } from 'lucide-react';
+import { Swords, Check, Video, Play, X, Crosshair, Users, Shield, ShieldCheck, ChevronRight, Plus, Trophy } from 'lucide-react';
 import { playSound } from '../utils/audio';
 import { COLLECTIBLES_DATABASE } from '../constants';
 import { ChallengeCardSkeleton, EmptyState } from '../components/States';
@@ -147,7 +147,7 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
            {[...Array(3)].map((_, i) => <ChallengeCardSkeleton key={i} />)}
         </div>
       ) : (
-        <div className="space-y-4 relative z-10">
+        <div className="space-y-6 relative z-10">
           <div className="flex items-center gap-2 px-1">
               <Swords size={14} className="text-white" />
               <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Challenges</span>
@@ -161,56 +161,88 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
                const submissions = submissionsMap[challenge.id] || [];
                
                return (
-                 <div key={challenge.id} className="bg-[#0b0c10] border border-white/10 rounded-3xl p-6 relative overflow-hidden shadow-xl">
-                    <div className="flex justify-between items-start mb-4">
-                        <div>
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className={`text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded ${
-                                    challenge.difficulty === Difficulty.ADVANCED ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                                }`}>
-                                    {challenge.difficulty}
+                 <div key={challenge.id} className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 relative overflow-hidden shadow-2xl transition-all duration-300 hover:border-white/20">
+                    
+                    {/* Scanline Overlay */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_2px,3px_100%] pointer-events-none opacity-20" />
+
+                    {/* Card Content */}
+                    <div className="relative z-10">
+                        {/* Top Status Bar */}
+                        <div className="flex justify-between items-start mb-4">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-indigo-500 animate-pulse'}`} />
+                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                                    {isCompleted ? 'MISSION COMPLETE' : 'ACTIVE BOUNTY'}
                                 </span>
-                                {isCompleted && <span className="text-[10px] font-bold text-green-400 flex items-center gap-1"><Check size={12} /> Complete</span>}
                             </div>
-                            <h3 className="text-lg font-black italic uppercase text-white tracking-tight">{challenge.title}</h3>
-                        </div>
-                        <div className="font-mono text-[10px] text-indigo-400 font-bold border border-indigo-500/30 px-2 py-1 rounded bg-indigo-500/10">+{challenge.xpReward} XP</div>
-                    </div>
-
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                            <Crosshair size={12} className="text-slate-400" /> 
-                            <span>{challenge.spotName}</span>
+                            <div className={`px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${
+                                challenge.difficulty === Difficulty.ADVANCED 
+                                ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                                : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                            }`}>
+                                {challenge.difficulty}
+                            </div>
                         </div>
 
-                        <p className="text-xs text-slate-300 font-medium leading-relaxed border-l-2 border-slate-700 pl-3">
-                            {challenge.description}
-                        </p>
+                        {/* Title & Spot */}
+                        <div className="mb-6">
+                            <h3 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-[0.9] mb-2 drop-shadow-xl w-[95%]">
+                                {challenge.title}
+                            </h3>
+                            <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
+                                <Crosshair size={12} strokeWidth={2.5} /> 
+                                <span className="border-b border-dashed border-indigo-500/50 pb-0.5">{challenge.spotName}</span>
+                            </div>
+                        </div>
 
+                        {/* Instructions */}
+                        <div className="mb-6 pl-4 border-l-2 border-slate-800">
+                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                                {challenge.description}
+                            </p>
+                        </div>
+
+                        {/* Recent Activity (Feed) */}
                         {submissions.length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto hide-scrollbar pt-2">
-                                {submissions.map(sub => (
-                                    <button key={sub.id} onClick={() => setViewingSubmission(sub)} className="w-16 h-16 rounded-xl bg-black overflow-hidden relative shrink-0 border border-white/10">
-                                        <img src={sub.thumbnailUrl} className="w-full h-full object-cover opacity-70" />
-                                        <div className="absolute inset-0 flex items-center justify-center"><Play size={12} className="text-white fill-white" /></div>
-                                    </button>
-                                ))}
+                            <div className="mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Users size={10} className="text-slate-600" />
+                                    <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest">Live Feed</span>
+                                </div>
+                                <div className="flex gap-3 overflow-x-auto hide-scrollbar">
+                                    {submissions.map(sub => (
+                                        <button key={sub.id} onClick={() => setViewingSubmission(sub)} className="w-14 h-14 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden relative shrink-0 group/sub shadow-lg">
+                                            <img src={sub.thumbnailUrl} className="w-full h-full object-cover opacity-60 group-hover/sub:opacity-100 transition-opacity grayscale group-hover/sub:grayscale-0" />
+                                            <div className="absolute inset-0 flex items-center justify-center"><Play size={12} className="text-white fill-white" /></div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
-                        <div className="pt-2">
-                            {isCompleted ? (
-                                 <button disabled className="w-full py-3 bg-slate-800/50 text-slate-500 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed border border-white/5">
-                                    <Check size={14} /> Completed
-                                 </button>
-                            ) : (
-                                 <button 
-                                    onClick={() => setUploadingChallenge(challenge)} 
-                                    className="w-full py-3 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-colors"
-                                 >
-                                    <Video size={14} /> Upload Proof
-                                 </button>
-                            )}
+                        {/* Footer Action Deck */}
+                        <div className="flex items-center justify-between gap-4 mt-auto border-t border-white/5 pt-5">
+                            <div className="flex flex-col">
+                                <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">Reward</span>
+                                <span className="text-lg font-black text-white font-mono leading-none">+{challenge.xpReward} XP</span>
+                            </div>
+
+                            <div className="flex-1">
+                                {isCompleted ? (
+                                     <button disabled className="w-full h-12 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed">
+                                        <Check size={14} strokeWidth={3} /> Verified
+                                     </button>
+                                ) : (
+                                     <button 
+                                        onClick={() => setUploadingChallenge(challenge)} 
+                                        className="w-full h-12 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all shadow-lg active:scale-95 relative overflow-hidden group/btn"
+                                     >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                                        <Video size={14} strokeWidth={2.5} /> Upload Proof
+                                     </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                  </div>
@@ -222,8 +254,8 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
 
       {viewingSubmission && (
         <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center p-4">
-             <div className="relative w-full max-w-lg aspect-[9/16] md:aspect-video bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                <button onClick={() => setViewingSubmission(null)} className="absolute top-4 right-4 text-white z-10 bg-black/50 p-2 rounded-full backdrop-blur"><X size={20} /></button>
+             <div className="relative w-full max-w-lg aspect-[9/16] md:aspect-video bg-black rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl">
+                <button onClick={() => setViewingSubmission(null)} className="absolute top-4 right-4 text-white z-10 bg-black/50 p-2 rounded-full backdrop-blur border border-white/10"><X size={20} /></button>
                 <video src={viewingSubmission.videoUrl} className="w-full h-full object-cover" controls autoPlay playsInline loop />
              </div>
         </div>

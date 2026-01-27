@@ -72,53 +72,53 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="h-full overflow-y-auto hide-scrollbar pb-24 pt-6 md:pb-10 space-y-8 px-4 animate-view min-h-full">
+    <div className="h-full overflow-y-auto hide-scrollbar pb-32 pt-6 md:pb-10 space-y-8 px-4 animate-view min-h-full bg-[#020202]">
       {/* Header */}
       <header className="flex items-center gap-4">
         <button 
           onClick={onBack}
-          className="p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-400 active:scale-95 transition-all"
+          className="p-2 bg-slate-900 border border-white/10 rounded-xl text-slate-400 active:scale-95 transition-all hover:text-white"
         >
           <ChevronLeft size={20} />
         </button>
         <div>
-          <h1 className="text-2xl font-black italic uppercase tracking-tighter">Admin Portal</h1>
+          <h1 className="text-2xl font-black italic uppercase tracking-tighter text-white">Admin Portal</h1>
           <p className="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em]">Management & Intelligence</p>
         </div>
       </header>
 
       {/* Quick Stats */}
       <section className="grid grid-cols-4 gap-2">
-        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+        <div className="bg-[#0b0c10] border border-white/10 p-3 rounded-2xl space-y-1">
           <Database size={14} className="text-indigo-400" />
-          <div className="text-lg font-black italic">{spots.length}</div>
-          <div className="text-[7px] text-slate-500 font-black uppercase">Spots</div>
+          <div className="text-lg font-black italic text-white">{spots.length}</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase tracking-widest">Spots</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+        <div className="bg-[#0b0c10] border border-white/10 p-3 rounded-2xl space-y-1">
           <AlertCircle size={14} className="text-amber-500" />
-          <div className="text-lg font-black italic">{pendingSpots.length}</div>
-          <div className="text-[7px] text-slate-500 font-black uppercase">Verify</div>
+          <div className="text-lg font-black italic text-white">{pendingSpots.length}</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase tracking-widest">Verify</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+        <div className="bg-[#0b0c10] border border-white/10 p-3 rounded-2xl space-y-1">
           <Users size={14} className="text-blue-400" />
-          <div className="text-lg font-black italic">{mentorApps.length}</div>
-          <div className="text-[7px] text-slate-500 font-black uppercase">Apps</div>
+          <div className="text-lg font-black italic text-white">{mentorApps.length}</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase tracking-widest">Apps</div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+        <div className="bg-[#0b0c10] border border-white/10 p-3 rounded-2xl space-y-1">
           <Activity size={14} className="text-green-500" />
-          <div className="text-lg font-black italic">142</div>
-          <div className="text-[7px] text-slate-500 font-black uppercase">Active</div>
+          <div className="text-lg font-black italic text-white">142</div>
+          <div className="text-[7px] text-slate-500 font-black uppercase tracking-widest">Active</div>
         </div>
       </section>
 
       {/* View Selector */}
-      <div className="flex bg-slate-900 p-1 rounded-2xl border border-slate-800 overflow-x-auto hide-scrollbar">
+      <div className="flex bg-[#0b0c10] p-1 rounded-2xl border border-white/10 overflow-x-auto hide-scrollbar">
         {['verifications', 'mentor-apps', 'spots', 'users'].map((t) => (
           <button
             key={t}
             onClick={() => setActiveTab(t as any)}
             className={`flex-1 min-w-[80px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
-              activeTab === t ? 'bg-indigo-500 text-white shadow-lg' : 'text-slate-500'
+              activeTab === t ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
             }`}
           >
             {t.replace('-', ' ')}
@@ -130,17 +130,17 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
       <div className="space-y-6">
         {activeTab === 'verifications' && (
           <div className="space-y-4">
-            <h2 className="text-sm font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
-              <ShieldCheck size={16} /> Verification Queue
+            <h2 className="text-xs font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
+              <ShieldCheck size={14} /> Verification Queue
             </h2>
             {pendingSpots.length === 0 ? (
-              <div className="py-12 text-center bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
+              <div className="py-12 text-center bg-slate-900/30 rounded-[2rem] border border-slate-800 border-dashed">
                 <Check size={32} className="mx-auto text-slate-700 mb-2" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">Queue is clear.</p>
               </div>
             ) : (
               pendingSpots.map(spot => (
-                <div key={spot.id} className="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
+                <div key={spot.id} className="bg-[#0b0c10] border border-white/10 p-6 rounded-[2rem] space-y-4 shadow-xl">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="text-lg font-black uppercase italic tracking-tight text-white">{spot.name}</h3>
@@ -148,28 +148,28 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
                         <MapPin size={10} className="text-indigo-400" /> {spot.location.address}, {spot.state}
                       </p>
                     </div>
-                    <span className="text-[8px] font-black uppercase bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded border border-indigo-500/20">
+                    <span className="text-[8px] font-black uppercase bg-indigo-500/10 text-indigo-400 px-2 py-1 rounded border border-indigo-500/20 tracking-wide">
                       {spot.type}
                     </span>
                   </div>
 
                   {spot.verificationNote && (
-                    <div className="bg-slate-800/50 p-3 rounded-xl border border-slate-700/50">
+                    <div className="bg-[#111] p-4 rounded-xl border border-white/5">
                       <p className="text-[8px] font-black uppercase text-slate-500 tracking-widest mb-1 italic">Submitter's Note:</p>
-                      <p className="text-xs text-slate-300 italic">"{spot.verificationNote}"</p>
+                      <p className="text-xs text-slate-300 italic font-medium">"{spot.verificationNote}"</p>
                     </div>
                   )}
 
                   <div className="flex gap-2 pt-2">
                     <button 
                       onClick={() => handleAction(spot.id, VerificationStatus.REJECTED)}
-                      className="flex-1 py-3 bg-slate-800 text-red-400 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                      className="flex-1 py-3 bg-slate-900 text-red-400 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform border border-white/5 hover:bg-slate-800"
                     >
                       <X size={14} /> Reject
                     </button>
                     <button 
                       onClick={() => handleAction(spot.id, VerificationStatus.VERIFIED)}
-                      className="flex-[2] py-3 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform"
+                      className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
                     >
                       <Check size={14} /> Approve Spot
                     </button>
@@ -182,47 +182,47 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
 
         {activeTab === 'mentor-apps' && (
             <div className="space-y-4">
-                <h2 className="text-sm font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
-                    <FileText size={16} /> Mentor Requests
+                <h2 className="text-xs font-black uppercase italic tracking-widest text-slate-400 flex items-center gap-2">
+                    <FileText size={14} /> Mentor Requests
                 </h2>
                 {mentorApps.length === 0 ? (
-                    <div className="py-12 text-center bg-slate-900/30 rounded-3xl border border-slate-800 border-dashed">
+                    <div className="py-12 text-center bg-slate-900/30 rounded-[2rem] border border-slate-800 border-dashed">
                         <Check size={32} className="mx-auto text-slate-700 mb-2" />
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 italic">No pending applications.</p>
                     </div>
                 ) : (
                     mentorApps.map(({ user, application }, idx) => (
-                        <div key={idx} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
-                            <div className="flex items-center gap-4 border-b border-slate-800 pb-4">
-                                <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
+                        <div key={idx} className="bg-[#0b0c10] border border-white/10 p-6 rounded-[2rem] space-y-4 shadow-xl">
+                            <div className="flex items-center gap-4 border-b border-white/5 pb-4">
+                                <div className="w-12 h-12 rounded-xl bg-slate-800 border border-white/10 overflow-hidden">
                                     <img src={user.avatar} className="w-full h-full object-cover" alt="" />
                                 </div>
                                 <div>
-                                    <h3 className="text-lg font-black uppercase italic text-white leading-none">{user.name}</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Level {user.level} • {user.location}</p>
+                                    <h3 className="text-lg font-black uppercase italic text-white leading-none tracking-tight">{user.name}</h3>
+                                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">Level {user.level} • {user.location}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
                                 <div>
                                     <p className="text-[8px] font-black uppercase text-indigo-400 tracking-widest mb-1">Experience</p>
-                                    <p className="text-xs text-slate-300 leading-relaxed">{application.experience}</p>
+                                    <p className="text-xs text-slate-300 leading-relaxed font-medium">{application.experience}</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-[8px] font-black uppercase text-indigo-400 tracking-widest mb-1">Style</p>
-                                        <p className="text-xs text-slate-300">{application.style}</p>
+                                        <p className="text-xs text-slate-300 font-bold uppercase">{application.style}</p>
                                     </div>
                                     <div>
                                         <p className="text-[8px] font-black uppercase text-indigo-400 tracking-widest mb-1">Rate</p>
-                                        <p className="text-xs text-slate-300">₹{application.rate}/hr</p>
+                                        <p className="text-xs text-slate-300 font-mono">₹{application.rate}/hr</p>
                                     </div>
                                 </div>
                                 
-                                <div className="bg-slate-950 rounded-xl p-3 flex items-center justify-between border border-slate-800">
+                                <div className="bg-[#111] rounded-xl p-3 flex items-center justify-between border border-white/5">
                                     <div className="flex items-center gap-2 text-slate-400">
                                         <Play size={14} />
-                                        <span className="text-[10px] font-bold uppercase tracking-widest">{application.videoUrl}</span>
+                                        <span className="text-[9px] font-bold uppercase tracking-widest">Demo Reel</span>
                                     </div>
                                     <button className="text-[9px] font-black uppercase text-indigo-400 hover:text-white">View</button>
                                 </div>
@@ -231,13 +231,13 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
                             <div className="flex gap-2 pt-2">
                                 <button 
                                 onClick={() => handleReviewApp(user.id, false)}
-                                className="flex-1 py-3 bg-slate-800 text-red-400 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                                className="flex-1 py-3 bg-slate-900 text-red-400 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform border border-white/5 hover:bg-slate-800"
                                 >
                                 <X size={14} /> Deny
                                 </button>
                                 <button 
                                 onClick={() => handleReviewApp(user.id, true)}
-                                className="flex-[2] py-3 bg-indigo-500 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform"
+                                className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
                                 >
                                 <Check size={14} /> Approve Mentor
                                 </button>
@@ -252,11 +252,11 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
           <div className="space-y-4">
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                 <input 
                   type="text" 
-                  placeholder="Filter database..."
-                  className="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500/30"
+                  placeholder="FILTER DATABASE..."
+                  className="w-full bg-[#0b0c10] border border-white/10 rounded-xl py-3 pl-10 pr-4 text-[10px] font-bold text-white uppercase tracking-widest focus:outline-none focus:border-indigo-500/50"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -265,14 +265,14 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
 
             <div className="space-y-2">
               {filteredSpots.map(spot => (
-                <div key={spot.id} className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between group">
+                <div key={spot.id} className="bg-[#0b0c10] border border-white/10 p-4 rounded-2xl flex items-center justify-between group hover:border-white/20 transition-colors">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border border-slate-800 ${spot.type === Discipline.SKATE ? 'text-indigo-400' : 'text-amber-400'}`}>
-                      {spot.type === Discipline.SKATE ? <Database size={18} /> : <Database size={18} />}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border border-white/5 bg-[#151515] ${spot.type === Discipline.SKATE ? 'text-indigo-400' : 'text-amber-400'}`}>
+                      <Database size={16} />
                     </div>
                     <div>
                       <h4 className="text-xs font-black uppercase italic text-white line-clamp-1">{spot.name}</h4>
-                      <p className="text-[9px] text-slate-500 font-bold uppercase truncate">{spot.state}</p>
+                      <p className="text-[8px] text-slate-500 font-bold uppercase truncate tracking-widest">{spot.state}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -297,14 +297,14 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
 
         {activeTab === 'users' && (
           <div className="space-y-4">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-6">
+            <div className="bg-[#0b0c10] border border-white/10 p-6 rounded-[2rem] space-y-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
                   <BarChart3 size={20} />
                 </div>
                 <div>
                   <h3 className="text-sm font-black uppercase italic tracking-tight text-white">Community Activity</h3>
-                  <p className="text-[9px] text-slate-500 font-bold uppercase">Weekly Snapshot</p>
+                  <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Weekly Snapshot</p>
                 </div>
               </div>
 
@@ -314,8 +314,8 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
                   { label: 'Spot Submissions', value: '8', trend: '-2%', color: 'text-slate-400' },
                   { label: 'Community XP', value: '840k', trend: '+22%', color: 'text-indigo-400' }
                 ].map((stat, i) => (
-                  <div key={i} className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{stat.label}</span>
+                  <div key={i} className="flex items-center justify-between border-b border-white/5 pb-2">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{stat.label}</span>
                     <div className="text-right">
                       <div className="text-sm font-black italic text-white">{stat.value}</div>
                       <div className={`text-[8px] font-bold ${stat.color}`}>{stat.trend}</div>
@@ -325,27 +325,27 @@ const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({ onBack }) => {
               </div>
 
               <div className="pt-2">
-                <button className="w-full py-4 bg-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 border border-slate-700/50 flex items-center justify-center gap-2">
+                <button className="w-full py-4 bg-[#151515] rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 border border-white/5 flex items-center justify-center gap-2 hover:text-white transition-colors">
                   <Activity size={14} /> View Full Logs
                 </button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-1">Recent Users</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-500 px-1 mb-2">Recent Users</h3>
               {[
                 { name: 'Arjun S.', location: 'Pune', xp: '14,500' },
                 { name: 'Rahul V.', location: 'Mumbai', xp: '8,200' },
                 { name: 'Simran K.', location: 'Delhi', xp: '12,000' }
               ].map((u, i) => (
-                <div key={i} className="bg-slate-900/50 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
+                <div key={i} className="bg-[#0b0c10] border border-white/10 p-4 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden border border-slate-700">
+                    <div className="w-8 h-8 rounded-lg bg-slate-800 overflow-hidden border border-white/5">
                       <img src={`https://picsum.photos/seed/${u.name}/40`} alt="" />
                     </div>
                     <div>
-                      <h4 className="text-[11px] font-black text-white italic uppercase">{u.name}</h4>
-                      <p className="text-[8px] text-slate-500 font-bold uppercase">{u.location}</p>
+                      <h4 className="text-[10px] font-black text-white italic uppercase tracking-wide">{u.name}</h4>
+                      <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">{u.location}</p>
                     </div>
                   </div>
                   <div className="text-[10px] font-black italic text-indigo-400">{u.xp} XP</div>

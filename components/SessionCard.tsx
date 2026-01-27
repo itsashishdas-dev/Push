@@ -16,57 +16,56 @@ const SessionCard: React.FC<SessionCardProps> = ({ session, isJoined, onJoin, on
   return (
     <div 
       onClick={onClick}
-      className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] h-full flex flex-col justify-between group cursor-pointer hover:border-slate-700 transition-colors shadow-xl relative overflow-hidden w-full"
+      className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 h-full flex flex-col justify-between group cursor-pointer hover:border-white/20 transition-all shadow-xl relative overflow-hidden w-full active:scale-[0.98]"
     >
       {/* Decorative gradient */}
-      <div className={`absolute top-0 right-0 w-32 h-32 rounded-full blur-[50px] opacity-10 pointer-events-none -mr-10 -mt-10 ${isSkate ? 'bg-indigo-500' : 'bg-amber-500'}`} />
+      <div className={`absolute top-0 right-0 w-40 h-40 rounded-full blur-[60px] opacity-10 pointer-events-none -mr-10 -mt-10 ${isSkate ? 'bg-indigo-500' : 'bg-amber-500'}`} />
 
       <div className="space-y-4 relative z-10">
-        <div className="flex justify-between items-start">
-           <div className="flex gap-2">
-             <div className="bg-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-               <Calendar size={12} className="text-slate-400" />
-               <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{session.date}</span>
+        {/* Date/Time Tags */}
+        <div className="flex gap-2">
+             <div className="bg-[#151515] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-2">
+               <Calendar size={10} className="text-slate-500" />
+               <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-slate-300">{session.date}</span>
              </div>
-             <div className="bg-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
-               <Clock size={12} className={isSkate ? "text-indigo-400" : "text-amber-400"} />
-               <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">{session.time}</span>
+             <div className="bg-[#151515] border border-white/5 px-3 py-1.5 rounded-lg flex items-center gap-2">
+               <Clock size={10} className={isSkate ? "text-indigo-400" : "text-amber-400"} />
+               <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-slate-300">{session.time}</span>
              </div>
-           </div>
         </div>
 
         <div>
-          <h3 className="text-lg font-black uppercase italic tracking-tight text-white leading-tight line-clamp-2 mb-1">
+          <h3 className="text-xl font-black italic uppercase tracking-tighter text-white leading-[0.9] line-clamp-2 mb-2 group-hover:text-indigo-400 transition-colors">
             {session.title}
           </h3>
-          <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-            <MapPin size={10} />
-            <span className="truncate max-w-[180px]">{session.spotName}</span>
+          <div className="flex items-center gap-2 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            <MapPin size={10} className="text-slate-600" />
+            <span className="truncate max-w-[200px] border-b border-dashed border-slate-700 pb-0.5">{session.spotName}</span>
           </div>
         </div>
       </div>
 
-      <div className="pt-6 flex items-center justify-between gap-3 relative z-10">
+      <div className="pt-6 flex items-center justify-between gap-3 relative z-10 border-t border-white/5 mt-4">
          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 overflow-hidden">
+            <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden">
                <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${session.userId}`} alt={session.userName} className="w-full h-full object-cover" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">Hosted by</span>
-              <span className="text-[10px] text-slate-300 font-black uppercase italic">{session.userName}</span>
+              <span className="text-[7px] text-slate-500 font-bold uppercase tracking-widest">Host</span>
+              <span className="text-[9px] text-white font-black uppercase italic tracking-wide">{session.userName}</span>
             </div>
          </div>
 
          <button 
            onClick={onJoin}
-           className={`h-10 px-5 rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-widest transition-all active:scale-90 ${
+           className={`h-10 px-5 rounded-xl flex items-center justify-center gap-2 text-[9px] font-black uppercase tracking-[0.15em] transition-all active:scale-95 shadow-lg ${
              isJoined 
-             ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-             : 'bg-white text-black hover:bg-slate-200 shadow-lg'
+             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+             : 'bg-white text-black hover:bg-slate-200 border border-transparent'
            }`}
          >
-           {isJoined ? <Check size={14} strokeWidth={3} /> : <UserPlus size={14} strokeWidth={3} />}
-           {isJoined ? 'In' : 'Join'}
+           {isJoined ? <Check size={12} strokeWidth={3} /> : <UserPlus size={12} strokeWidth={3} />}
+           {isJoined ? 'JOINED' : 'JOIN'}
          </button>
       </div>
     </div>

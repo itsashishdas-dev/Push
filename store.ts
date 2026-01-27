@@ -22,6 +22,9 @@ interface AppState {
   selectedSpot: Spot | null;
   selectedSkill: Skill | null;
   
+  // --- PERSISTENT VIEW STATE ---
+  mapViewSettings: { center: { lat: number; lng: number }, zoom: number } | null;
+
   // --- STATUS ---
   isLoading: boolean;
   error: string | null;
@@ -37,11 +40,15 @@ interface AppState {
   closeModal: () => void;
   selectSpot: (spot: Spot | null) => void;
   selectSkill: (skill: Skill | null) => void;
+  setMapViewSettings: (settings: { center: { lat: number; lng: number }, zoom: number }) => void;
   
   // Data Actions
   refreshSpots: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   addNewSpot: (spotData: Partial<Spot>) => Promise<Spot>;
+  bookMentorSession: (mentor: Mentor, date: string, time: string) => Promise<void>;
+  createSession: (data: Partial<ExtendedSession>) => Promise<void>;
+  createChallenge: (data: Partial<Challenge>) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -60,6 +67,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeModal: 'NONE',
   selectedSpot: null,
   selectedSkill: null,
+  mapViewSettings: null,
   
   isLoading: true,
   error: null,
@@ -136,6 +144,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ selectedSkill: skill });
   },
 
+  setMapViewSettings: (settings) => {
+    set({ mapViewSettings: settings });
+  },
+
   // --- DATA ACTIONS ---
   refreshSpots: async () => {
       const spots = await backend.getSpots();
@@ -152,5 +164,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       const newSpot = await backend.addSpot(spotData);
       await get().refreshSpots();
       return newSpot;
+  },
+
+  bookMentorSession: async (mentor: Mentor, date: string, time: string) => {
+      await backend.bookMentorSession(mentor, date, time);
+      // Refresh to update Upcoming radar and Timeline logs
+      await get().initializeData();
+  },
+
+  createSession: async (data: Partial<ExtendedSession>) => {
+      await backend.createSession(data);
+      await get().refreshSessions();
+  },
+
+  createChallenge: async (data: Partial<Challenge>) => {
+      await backend.createChallenge(data);
+      await get().initializeData();
   }
 }));

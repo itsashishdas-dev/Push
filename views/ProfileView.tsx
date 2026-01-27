@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Settings, Lock, Shield, Trophy, Zap, Users, MapPin, ChevronRight, Crown, Crosshair, BarChart3, Plus, Activity, User as UserIcon, LogOut, Bell, Volume2, UserCog, X, Save, Type, Footprints, History, Hexagon, Star } from 'lucide-react';
+import { Settings, Lock, Shield, Trophy, Zap, Users, MapPin, ChevronRight, Crown, Crosshair, BarChart3, Plus, Activity, User as UserIcon, LogOut, Bell, Volume2, UserCog, X, Save, Type, Footprints, History, Hexagon, Star, Gamepad2, VolumeX } from 'lucide-react';
 import { backend } from '../services/mockBackend';
 import { User as UserType, Crew, BadgeTier } from '../types';
 import { COLLECTIBLES_DATABASE, BADGE_DATABASE } from '../constants';
 import { triggerHaptic } from '../utils/haptics';
 import { useAppStore } from '../store';
-import { playSound } from '../utils/audio';
+import { playSound, setSoundEnabled } from '../utils/audio';
+import SkaterGame from '../components/SkaterGame';
 
 interface ProfileViewProps {
   onLogout: () => void;
@@ -19,6 +20,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
   const [crew, setCrew] = useState<Crew | null>(null);
   const [activeSection, setActiveSection] = useState<'overview' | 'badges' | 'history'>('overview');
   const [showSettings, setShowSettings] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -68,15 +70,55 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
       setIsEditing(false);
   };
 
+  const toggleSfx = () => {
+      if (!user) return;
+      const newState = !user.soundEnabled;
+      const updatedUser = { ...user, soundEnabled: newState };
+      
+      updateUser(updatedUser);
+      backend.updateUser(updatedUser);
+      setSoundEnabled(newState);
+      
+      triggerHaptic('medium');
+      if (newState) playSound('click');
+  };
+
+  const toggleNotifications = async () => {
+      if (!user) return;
+      triggerHaptic('medium');
+      
+      if (!user.notificationsEnabled) {
+          // Request Permission
+          if ('Notification' in window) {
+              try {
+                  const permission = await Notification.requestPermission();
+                  if (permission === 'granted') {
+                      const updated = { ...user, notificationsEnabled: true };
+                      updateUser(updated);
+                      backend.updateUser(updated);
+                      playSound('success');
+                  } else {
+                      // Permission denied
+                      alert("Notifications blocked by browser.");
+                  }
+              } catch (e) {
+                  console.error("Notification Error", e);
+              }
+          } else {
+              alert("Notifications not supported on this device.");
+          }
+      } else {
+          // Toggle Off in App State
+          const updated = { ...user, notificationsEnabled: false };
+          updateUser(updated);
+          backend.updateUser(updated);
+          playSound('click');
+      }
+  };
+
   if (!user) return null;
 
   // Progression Maths
-  // Formula: Next Level XP = 100 + (Level * 40)
-  // To visualize progress bar, we need XP earned within *current* level vs total required for *next*.
-  // For simplicity in mock, we'll just use a direct calculation relative to threshold.
-  // Note: user.xp is Cumulative.
-  
-  // Re-calculate thresholds for accurate bar
   let xpAccumulated = 0;
   for(let i=1; i < user.level; i++) {
       xpAccumulated += 100 + (i * 40);
@@ -94,13 +136,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
 
   const handleLogout = () => {
       triggerHaptic('medium');
+      playSound('goodbye'); // New friendly goodbye sound
       setShowSettings(false);
-      onLogout();
+      setTimeout(onLogout, 800); // Wait for sound
   };
 
   const navigateToCrew = () => {
       triggerHaptic('light');
-      // Fix: Ensure we pass 'CREW' uppercase
       setActiveTab('CREW');
   };
 
@@ -153,7 +195,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
                
                <button 
                  onClick={() => { setShowSettings(true); triggerHaptic('light'); }} 
-                 className="w-10 h-10 bg-[#0b0c10] border border-white/10 rounded-full flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
+                 className="w-10 h-10 bg-[#0b0c10] border border-white/10 rounded-xl flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-800 transition-all active:scale-95 shadow-lg"
                >
                   <Settings size={18} />
                </button>
@@ -229,6 +271,25 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
                        <div className="text-green-400 mb-1 group-hover:scale-110 transition-transform"><Star size={20} /></div>
                        <div className="text-xl font-black text-white leading-none">{user.xp.toLocaleString()}</div>
                        <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">Total XP</div>
+                   </div>
+               </div>
+
+               {/* Mini Game Entry */}
+               <div 
+                 onClick={() => { setShowGame(true); triggerHaptic('medium'); }}
+                 className="bg-indigo-900/10 border border-indigo-500/30 rounded-[2rem] p-5 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all hover:bg-indigo-900/20 group"
+               >
+                   <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/30 group-hover:scale-110 transition-transform">
+                           <Gamepad2 size={24} />
+                       </div>
+                       <div>
+                           <h3 className="text-sm font-black uppercase italic text-white tracking-widest">Reflex Sim</h3>
+                           <p className="text-[9px] font-bold text-indigo-300 uppercase tracking-widest mt-0.5">Offline Training Module</p>
+                       </div>
+                   </div>
+                   <div className="w-10 h-10 bg-indigo-500/20 rounded-full flex items-center justify-center text-indigo-400">
+                       <ChevronRight size={18} />
                    </div>
                </div>
 
@@ -383,101 +444,115 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
            </div>
        )}
 
+       {/* --- GAME MODAL --- */}
+       {showGame && (
+           <SkaterGame onClose={() => setShowGame(false)} isOverlay={true} />
+       )}
+
        {/* --- SETTINGS MODAL (PORTAL) --- */}
        {showSettings && createPortal(
-         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center animate-view" onClick={() => setShowSettings(false)}>
-            <div className="w-full max-w-sm bg-[#1a1a1a] border-t md:border border-white/10 rounded-t-[2rem] md:rounded-[2rem] p-6 shadow-2xl relative mb-safe-bottom md:mb-0" onClick={e => e.stopPropagation()}>
+         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-view" onClick={() => setShowSettings(false)}>
+            <div className="w-full max-w-sm bg-[#0b0c10] border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col" onClick={e => e.stopPropagation()}>
                 {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-black italic uppercase text-white tracking-tight">{isEditing ? 'EDIT IDENTITY' : 'SYSTEM CONFIG'}</h3>
-                    <button onClick={() => { setIsEditing(false); setShowSettings(false); }} className="p-2 bg-black/40 rounded-full text-slate-400 hover:text-white active:scale-95 transition-transform"><X size={20} /></button>
+                <div className="flex justify-between items-center mb-6 shrink-0">
+                    <h3 className="text-2xl font-black italic uppercase text-white tracking-tighter leading-none">{isEditing ? 'Edit Identity' : 'System Config'}</h3>
+                    <button onClick={() => { setIsEditing(false); setShowSettings(false); }} className="w-8 h-8 bg-black/40 rounded-full text-slate-400 hover:text-white active:scale-95 transition-transform flex items-center justify-center border border-white/5"><X size={16} /></button>
                 </div>
 
-                {isEditing ? (
-                    <div className="space-y-4 animate-view">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
-                                <Type size={12} /> Codename
-                            </label>
-                            <input 
-                                type="text"
-                                value={editForm.name}
-                                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                                className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 uppercase"
-                                placeholder="ENTER NAME"
-                            />
-                        </div>
+                <div className="flex-1">
+                    {isEditing ? (
+                        <div className="space-y-4 animate-view">
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                    <Type size={12} /> Codename
+                                </label>
+                                <input 
+                                    type="text"
+                                    value={editForm.name}
+                                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                                    className="w-full bg-[#050505] border border-white/10 rounded-xl p-4 text-sm font-bold text-white focus:outline-none focus:border-indigo-500 uppercase tracking-wider"
+                                    placeholder="ENTER NAME"
+                                />
+                            </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
-                                <Type size={12} /> Bio
-                            </label>
-                            <textarea 
-                                value={editForm.bio}
-                                onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
-                                className="w-full bg-[#0b0c10] border border-white/10 rounded-xl p-4 text-xs font-medium text-white focus:outline-none focus:border-indigo-500 resize-none h-24"
-                                placeholder="ENTER BIO..."
-                            />
-                        </div>
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                    <Type size={12} /> Bio
+                                </label>
+                                <textarea 
+                                    value={editForm.bio}
+                                    onChange={(e) => setEditForm({...editForm, bio: e.target.value})}
+                                    className="w-full bg-[#050505] border border-white/10 rounded-xl p-4 text-xs font-medium text-white focus:outline-none focus:border-indigo-500 resize-none h-24"
+                                    placeholder="ENTER BIO..."
+                                />
+                            </div>
 
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
-                                <Footprints size={12} /> Stance
-                            </label>
-                            <div className="flex bg-[#0b0c10] p-1 rounded-xl border border-white/10">
-                                {['regular', 'goofy'].map(s => (
+                            <div className="space-y-2">
+                                <label className="text-[9px] font-black uppercase text-indigo-400 tracking-widest flex items-center gap-2">
+                                    <Footprints size={12} /> Stance
+                                </label>
+                                <div className="flex bg-[#050505] p-1 rounded-xl border border-white/10">
+                                    {['regular', 'goofy'].map(s => (
+                                        <button 
+                                            key={s}
+                                            onClick={() => setEditForm({...editForm, stance: s as any})}
+                                            className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${editForm.stance === s ? 'bg-white text-black shadow-lg' : 'text-slate-500'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="pt-4 flex gap-3">
+                                <button onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
+                                <button onClick={handleSaveProfile} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
+                                    <Save size={14} /> Save Config
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Options */}
+                            <div className="space-y-2">
+                                <button onClick={() => setIsEditing(true)} className="w-full p-4 bg-[#050505] border border-white/10 rounded-2xl flex items-center gap-4 hover:bg-slate-900 transition-colors group">
+                                    <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-indigo-600 transition-all border border-white/5"><UserCog size={18} /></div>
+                                    <div className="text-left flex-1"><div className="text-sm font-bold text-white uppercase tracking-tight">Edit Identity</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Update Profile Data</div></div>
+                                    <ChevronRight size={16} className="text-slate-600" />
+                                </button>
+
+                                <div className="flex gap-2">
                                     <button 
-                                        key={s}
-                                        onClick={() => setEditForm({...editForm, stance: s as any})}
-                                        className={`flex-1 py-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${editForm.stance === s ? 'bg-white text-black shadow-lg' : 'text-slate-500'}`}
+                                        onClick={toggleNotifications}
+                                        className={`flex-1 p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95 ${user.notificationsEnabled ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-[#050505] border-white/10 hover:bg-slate-900'}`}
                                     >
-                                        {s}
+                                        <Bell size={20} className={user.notificationsEnabled ? "text-indigo-400" : "text-slate-400"} />
+                                        <span className={`text-[9px] font-bold uppercase tracking-widest ${user.notificationsEnabled ? 'text-indigo-300' : 'text-slate-500'}`}>Alerts: {user.notificationsEnabled ? 'ON' : 'OFF'}</span>
                                     </button>
-                                ))}
-                            </div>
-                        </div>
+                                    
+                                    <button 
+                                        onClick={toggleSfx}
+                                        className={`flex-1 p-4 border rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95 ${user.soundEnabled ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-[#050505] border-white/10 hover:bg-slate-900'}`}
+                                    >
+                                        {user.soundEnabled ? <Volume2 size={20} className="text-indigo-400" /> : <VolumeX size={20} className="text-slate-400" />}
+                                        <span className={`text-[9px] font-bold uppercase tracking-widest ${user.soundEnabled ? 'text-indigo-300' : 'text-slate-500'}`}>SFX: {user.soundEnabled ? 'ON' : 'OFF'}</span>
+                                    </button>
+                                </div>
 
-                        <div className="pt-4 flex gap-3">
-                            <button onClick={() => setIsEditing(false)} className="flex-1 py-4 bg-slate-800 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">Cancel</button>
-                            <button onClick={handleSaveProfile} className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2">
-                                <Save size={14} /> Save Config
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        {/* Options */}
-                        <div className="space-y-2">
-                            <button onClick={() => setIsEditing(true)} className="w-full p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex items-center gap-4 hover:bg-slate-900 transition-colors group">
-                                <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white group-hover:bg-indigo-600 transition-all"><UserCog size={18} /></div>
-                                <div className="text-left flex-1"><div className="text-sm font-bold text-white uppercase">Edit Identity</div><div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Update Profile Data</div></div>
-                                <ChevronRight size={16} className="text-slate-600" />
-                            </button>
+                                <div className="h-px bg-white/5 my-2" />
 
-                            <div className="flex gap-2">
-                                <button className="flex-1 p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex flex-col items-center gap-2 hover:bg-slate-900 transition-colors">
-                                    <Bell size={20} className="text-slate-400" />
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Alerts: ON</span>
-                                </button>
-                                <button className="flex-1 p-4 bg-[#0b0c10] border border-white/5 rounded-2xl flex flex-col items-center gap-2 hover:bg-slate-900 transition-colors">
-                                    <Volume2 size={20} className="text-slate-400" />
-                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">SFX: ON</span>
+                                <button onClick={handleLogout} className="w-full p-4 bg-red-950/20 border border-red-500/20 rounded-2xl flex items-center gap-4 hover:bg-red-900/30 transition-colors group">
+                                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 group-hover:bg-red-500 group-hover:text-white transition-all"><LogOut size={18} /></div>
+                                    <div className="text-left flex-1"><div className="text-sm font-bold text-red-400 uppercase tracking-tight">Terminate Session</div><div className="text-[9px] font-bold text-red-500/50 uppercase tracking-widest">Log Out</div></div>
                                 </button>
                             </div>
-
-                            <div className="h-px bg-white/5 my-2" />
-
-                            <button onClick={handleLogout} className="w-full p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 hover:bg-red-500/20 transition-colors group">
-                                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500 group-hover:bg-red-500 group-hover:text-white transition-all"><LogOut size={18} /></div>
-                                <div className="text-left flex-1"><div className="text-sm font-bold text-red-400 uppercase">Terminate Session</div><div className="text-[9px] font-bold text-red-500/50 uppercase tracking-widest">Log Out</div></div>
-                            </button>
-                        </div>
-                        
-                        <div className="mt-6 text-center">
-                            <p className="text-[8px] font-mono text-slate-600 uppercase">PUSH OS v1.9 // ID: {user.id}</p>
-                        </div>
-                    </>
-                )}
+                            
+                            <div className="mt-6 text-center">
+                                <p className="text-[8px] font-mono text-slate-600 uppercase tracking-widest">PUSH OS v1.9 // ID: {user.id}</p>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
          </div>,
          document.body

@@ -5,16 +5,17 @@ import { useAppStore } from './store.ts';
 import { backend } from './services/mockBackend.ts';
 
 // Components
-import Navigation from './components/Navigation.tsx';
+import AppLayout from './components/AppLayout.tsx';
 import AddSpotModal from './components/AddSpotModal.tsx';
 import SpotPreviewCard from './components/SpotPreviewCard.tsx'; 
+import CreateSessionModal from './components/CreateSessionModal.tsx';
+import CreateChallengeModal from './components/CreateChallengeModal.tsx';
 
 // Views
 import SpotsView from './views/SpotsView.tsx';
 import GridView from './views/GridView.tsx';
 import ChallengesView from './views/ChallengesView.tsx';
 import MentorshipView from './views/MentorshipView.tsx';
-import SkillsView from './views/SkillsView.tsx';
 import JourneyView from './views/JourneyView.tsx';
 import ProfileView from './views/ProfileView.tsx';
 import CrewView from './views/CrewView.tsx';
@@ -26,7 +27,7 @@ import PrivacyPolicyView from './views/PrivacyPolicyView.tsx';
 // Services
 import { VerificationService } from './services/verificationService.ts';
 import { triggerHaptic } from './utils/haptics.ts';
-import { playSound } from './utils/audio.ts';
+import { playSound, setSoundEnabled } from './utils/audio.ts';
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
@@ -70,6 +71,13 @@ const App: React.FC = () => {
     checkAuth();
   }, []);
 
+  // Sync sound settings when user loads
+  useEffect(() => {
+      if (user) {
+          setSoundEnabled(user.soundEnabled);
+      }
+  }, [user]);
+
   const handleLogin = async () => {
     const u = await backend.login();
     updateUser(u);
@@ -103,30 +111,26 @@ const App: React.FC = () => {
 
   // --- MAIN LAYOUT ---
   return (
-    <div className="flex flex-col h-screen w-full bg-[#020202] text-slate-100 overflow-hidden relative">
-      
+    <AppLayout>
       {/* ACTIVE VIEW AREA */}
-      <main className="flex-1 relative overflow-hidden h-full w-full">
-        {currentView === 'MAP' && <SpotsView />} 
-        {currentView === 'LIST' && <GridView />}
-        {currentView === 'CHALLENGES' && <ChallengesView onNavigate={(t) => setView(t as any)} />}
-        {currentView === 'MENTORSHIP' && <MentorshipView />}
-        {currentView === 'SKILLS' && <SkillsView />}
-        {currentView === 'JOURNEY' && <JourneyView />}
-        {currentView === 'PROFILE' && <ProfileView setActiveTab={(t) => setView(t as any)} onLogout={handleLogout} />}
-        {currentView === 'CREW' && <CrewView onBack={() => setView('CHALLENGES')} />}
-        {currentView === 'ADMIN' && <AdminDashboardView onBack={() => setView('PROFILE')} />}
-      </main>
+      {currentView === 'MAP' && <SpotsView />} 
+      {currentView === 'LIST' && <GridView />}
+      {currentView === 'CHALLENGES' && <ChallengesView onNavigate={(t) => setView(t as any)} />}
+      {currentView === 'MENTORSHIP' && <MentorshipView />}
+      {currentView === 'JOURNEY' && <JourneyView />}
+      {currentView === 'PROFILE' && <ProfileView setActiveTab={(t) => setView(t as any)} onLogout={handleLogout} />}
+      {currentView === 'CREW' && <CrewView onBack={() => setView('CHALLENGES')} />}
+      {currentView === 'ADMIN' && <AdminDashboardView onBack={() => setView('PROFILE')} />}
 
       {/* GLOBAL OVERLAYS */}
       
       {/* Spot Preview Card Overlay */}
       {activeModal === 'SPOT_DETAIL' && selectedSpot && (
          <>
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-40 animate-[fadeIn_0.2s_ease-out]" onClick={closeModal} />
+            {/* Backdrop (Only for compact mode conceptually, but we can keep it global) */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-40 animate-[fadeIn_0.2s_ease-out] md:hidden" onClick={closeModal} />
             
-            {/* Sheet */}
+            {/* Sheet / Panel */}
             <SpotPreviewCard 
                 spot={selectedSpot}
                 sessions={spotSessions}
@@ -143,10 +147,9 @@ const App: React.FC = () => {
       )}
 
       {activeModal === 'ADD_SPOT' && <AddSpotModal />}
-
-      {/* NAVIGATION */}
-      <Navigation />
-    </div>
+      {activeModal === 'CREATE_SESSION' && <CreateSessionModal />}
+      {activeModal === 'CREATE_CHALLENGE' && <CreateChallengeModal />}
+    </AppLayout>
   );
 };
 

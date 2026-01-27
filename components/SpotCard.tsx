@@ -1,6 +1,6 @@
 
 import React, { memo } from 'react';
-import { MapPin, Users, Info, Star, Droplets, Zap, Activity, ChevronRight } from 'lucide-react';
+import { MapPin, Zap, Activity, Navigation, Star, Layers, Mountain, ShieldCheck } from 'lucide-react';
 import { Spot, Discipline, SpotStatus } from '../types';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -11,7 +11,6 @@ interface SpotCardProps {
 
 const SpotCard: React.FC<SpotCardProps> = memo(({ spot, onClick }) => {
   const isSkate = spot.type === Discipline.SKATE;
-  const hasActiveSessions = spot.sessions && spot.sessions.length > 0;
   
   const handleClick = () => {
     triggerHaptic('medium');
@@ -20,82 +19,97 @@ const SpotCard: React.FC<SpotCardProps> = memo(({ spot, onClick }) => {
 
   const mainImage = spot.images?.[0] || `https://picsum.photos/seed/${spot.id}/400/400`;
   
-  // Status Logic
-  const statusColor = 
-    spot.status === SpotStatus.WET ? 'text-blue-400' :
-    spot.status === SpotStatus.CROWDED ? 'text-amber-400' :
-    'text-green-400';
+  const statusConfig = {
+    [SpotStatus.WET]: { color: 'text-cyan-400', border: 'border-cyan-500/50', bg: 'bg-cyan-950/90', label: 'CAUTION: WET' },
+    [SpotStatus.CROWDED]: { color: 'text-amber-400', border: 'border-amber-500/50', bg: 'bg-amber-950/90', label: 'ALERT: HIGH TRAFFIC' },
+    [SpotStatus.DRY]: { color: 'text-emerald-400', border: 'border-emerald-500/50', bg: 'bg-emerald-950/90', label: 'STATUS: OPTIMAL' },
+    [SpotStatus.MAINTENANCE]: { color: 'text-red-400', border: 'border-red-500/50', bg: 'bg-red-950/90', label: 'ERROR: CLOSED' },
+  };
 
-  const statusBorder = 
-    spot.status === SpotStatus.WET ? 'border-blue-500/20' :
-    spot.status === SpotStatus.CROWDED ? 'border-amber-500/20' :
-    'border-green-500/20';
-
-  const statusIcon = 
-    spot.status === SpotStatus.WET ? <Droplets size={10} className={statusColor} /> :
-    spot.status === SpotStatus.CROWDED ? <Users size={10} className={statusColor} /> :
-    <Zap size={10} className={statusColor} />;
-
-  const statusText = 
-    spot.status === SpotStatus.WET ? 'WET' :
-    spot.status === SpotStatus.CROWDED ? 'HIGH TRAFFIC' :
-    'PRIME';
+  const status = statusConfig[spot.status || SpotStatus.DRY];
 
   return (
     <div 
-      className="group relative w-full h-40 bg-[#0e0e0e] border border-white/5 rounded-3xl overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:border-indigo-500/30 hover:shadow-[0_0_25px_rgba(99,102,241,0.1)] active:scale-95 cursor-pointer flex flex-col shadow-2xl"
+      className="group relative w-full aspect-[4/5] bg-[#050505] rounded-[1.5rem] overflow-hidden cursor-pointer flex flex-col shadow-2xl transition-all duration-300 hover:scale-[1.02] border border-white/10 hover:border-indigo-500/50"
       onClick={handleClick}
     >
-      {/* Background Image Layer */}
-      <div className="absolute inset-0 z-0">
+      {/* 1. Image Section (Top 60%) - Surveillance Style */}
+      <div className="h-[60%] relative overflow-hidden bg-slate-900">
+          {/* Base Image with Grayscale Filter */}
           <img 
             src={mainImage} 
             alt={spot.name} 
             loading="lazy"
-            className="w-full h-full object-cover opacity-40 group-hover:opacity-60 transition-all duration-500 grayscale group-hover:grayscale-0"
+            className="w-full h-full object-cover transition-all duration-500 grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-110 mix-blend-overlay md:mix-blend-normal"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e0e] via-[#0e0e0e]/80 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent" />
-      </div>
-
-      {/* Top Badge Layer */}
-      <div className="relative z-10 px-4 pt-3 flex justify-between items-start">
-          <div className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border backdrop-blur-md flex items-center gap-1.5 ${statusBorder} bg-black/40`}>
-              {statusIcon}
-              <span className={statusColor}>{statusText}</span>
-          </div>
           
-          {hasActiveSessions && (
-             <div className="flex items-center justify-center w-5 h-5 bg-green-500/20 rounded-full border border-green-500/30 shrink-0 animate-pulse backdrop-blur-sm">
-                 <Users size={10} className="text-green-400" />
-             </div>
-          )}
-      </div>
+          {/* Scanlines */}
+          <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.4)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_3px,3px_100%] opacity-40 group-hover:opacity-20 transition-opacity" />
+          
+          {/* Status Tag - Floating Top Left */}
+          <div className="absolute top-3 left-3 z-30">
+              <div className={`px-2 py-1 rounded-sm border backdrop-blur-md flex items-center gap-1.5 shadow-lg ${status.border} ${status.bg}`}>
+                  <div className={`w-1 h-1 rounded-full ${status.color.replace('text-', 'bg-')} animate-pulse`} />
+                  <span className={`text-[7px] font-mono font-bold uppercase tracking-widest ${status.color}`}>{status.label}</span>
+              </div>
+          </div>
 
-      {/* Content Section */}
-      <div className="relative z-10 flex-1 p-4 flex flex-col justify-end">
-          <div className="space-y-1.5">
-            <h3 className="text-sm font-black italic text-white uppercase leading-none tracking-tight group-hover:text-indigo-400 transition-colors line-clamp-1 pr-4">
-                {spot.name}
-            </h3>
-            
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span className="flex items-center gap-1">
-                       <MapPin size={10} className="text-indigo-500" /> 
-                       {(spot.distance ? (spot.distance / 1000).toFixed(1) : '?.?')} KM
-                    </span>
-                    <span className="w-0.5 h-2 bg-slate-700" />
-                    <span className="truncate max-w-[80px] text-slate-500">
-                       {spot.state}
-                    </span>
-                </div>
-            </div>
+          {/* Type Icon - Floating Top Right */}
+          <div className="absolute top-3 right-3 z-30">
+              <div className="w-8 h-8 bg-black/80 border border-white/10 rounded-lg flex items-center justify-center text-white/80 backdrop-blur-sm">
+                  {isSkate ? <Zap size={14} /> : <Mountain size={14} />}
+              </div>
+          </div>
+
+          {/* Gradient Overlay for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent z-10" />
+          
+          {/* Title Overlay */}
+          <div className="absolute bottom-0 left-0 w-full p-4 z-20">
+              <div className="flex items-center gap-1.5 mb-1 opacity-70">
+                  {spot.isVerified && <ShieldCheck size={10} className="text-indigo-400" />}
+                  <span className="text-[8px] font-mono text-indigo-300 font-bold uppercase tracking-widest">
+                      SECTOR: {spot.state?.toUpperCase().slice(0, 3) || 'UNK'}
+                  </span>
+              </div>
+              <h3 className="text-2xl font-black italic uppercase text-white leading-[0.85] tracking-tighter truncate w-full group-hover:text-indigo-400 transition-colors">
+                  {spot.name}
+              </h3>
           </div>
       </div>
-      
-      {/* Selection Highlight */}
-      <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+
+      {/* 2. Data HUD (Bottom 40%) */}
+      <div className="h-[40%] bg-[#050505] p-4 flex flex-col justify-between relative border-t border-white/5">
+          {/* Grid Stats */}
+          <div className="grid grid-cols-2 gap-px bg-white/5 rounded-lg overflow-hidden border border-white/5">
+              <div className="bg-[#0a0a0a] p-2 flex flex-col justify-center">
+                  <span className="text-[7px] text-slate-600 font-black uppercase tracking-widest mb-0.5 flex items-center gap-1"><Layers size={8} /> Surface</span>
+                  <span className="text-[9px] font-mono font-bold text-slate-300 uppercase truncate">{spot.surface}</span>
+              </div>
+              <div className="bg-[#0a0a0a] p-2 flex flex-col justify-center">
+                  <span className="text-[7px] text-slate-600 font-black uppercase tracking-widest mb-0.5 flex items-center gap-1"><Star size={8} /> Rating</span>
+                  <span className="text-[9px] font-mono font-bold text-yellow-500 uppercase">{spot.rating.toFixed(1)} / 5.0</span>
+              </div>
+          </div>
+
+          {/* Location & Action */}
+          <div className="flex items-end justify-between mt-2">
+              <div className="flex flex-col gap-1">
+                  <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                      <MapPin size={10} className="text-slate-600" />
+                      {spot.location.address ? spot.location.address.split(',')[0] : 'Unknown Coords'}
+                  </div>
+              </div>
+              
+              <button className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.3)] hover:bg-indigo-500 transition-all active:scale-95 group-hover:rotate-0 rotate-45">
+                  <Navigation size={14} strokeWidth={2.5} className="group-hover:rotate-0 -rotate-45 transition-transform" />
+              </button>
+          </div>
+
+          {/* Corner Brackets (Tactical Decoration) */}
+          <div className="absolute bottom-2 right-2 w-2 h-2 border-r border-b border-slate-700 pointer-events-none" />
+          <div className="absolute bottom-2 left-2 w-2 h-2 border-l border-b border-slate-700 pointer-events-none" />
+      </div>
     </div>
   );
 });

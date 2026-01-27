@@ -1,6 +1,8 @@
+
 import React, { ErrorInfo, ReactNode, Component } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
+import SkaterGame from './components/SkaterGame.tsx';
 
 interface ErrorBoundaryProps {
   children?: ReactNode;
@@ -31,18 +33,22 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: 20, backgroundColor: '#000', color: '#fff', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: 20 }}>System Failure</h1>
-          <p style={{ color: '#aaa', maxWidth: 400 }}>The PUSH network encountered a critical runtime error.</p>
-          <pre style={{ marginTop: 20, padding: 15, backgroundColor: '#111', borderRadius: 8, textAlign: 'left', overflow: 'auto', maxWidth: '90vw', color: '#f87171' }}>
-            {this.state.error?.toString()}
-          </pre>
-          <button 
-            onClick={() => window.location.reload()}
-            style={{ marginTop: 30, padding: '12px 24px', backgroundColor: '#fff', color: '#000', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            Reboot System
-          </button>
+        <div style={{ backgroundColor: '#000', color: '#fff', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: 20, left: 20, textAlign: 'left', zIndex: 10 }}>
+             <h1 style={{ fontSize: '1.2rem', fontWeight: 900, textTransform: 'uppercase', marginBottom: 5 }}>System Offline</h1>
+             <p style={{ color: '#666', fontSize: '0.7rem', fontFamily: 'monospace' }}>CONNECTION_LOST // ERR_NETWORK_FAILURE</p>
+          </div>
+          
+          <SkaterGame />
+
+          <div style={{ position: 'absolute', bottom: 30, width: '100%', display: 'flex', justifyContent: 'center', gap: 10 }}>
+             <button 
+                onClick={() => window.location.reload()}
+                style={{ padding: '12px 24px', backgroundColor: '#fff', color: '#000', border: 'none', borderRadius: 8, fontWeight: 'bold', cursor: 'pointer', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}
+              >
+                Reconnect
+              </button>
+          </div>
         </div>
       );
     }

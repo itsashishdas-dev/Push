@@ -41,6 +41,12 @@ export enum SpotStatus {
   MAINTENANCE = 'maintenance'
 }
 
+export enum SpotPrivacy {
+  PUBLIC = 'public',
+  CREW = 'crew',
+  PRIVATE = 'private'
+}
+
 export enum CollectibleType {
   DECK = 'deck',
   STICKER = 'sticker',
@@ -68,8 +74,8 @@ export enum BadgeTier {
 }
 
 // --- UI STATE TYPES ---
-export type AppView = 'MAP' | 'LIST' | 'CHALLENGES' | 'MENTORSHIP' | 'SKILLS' | 'JOURNEY' | 'PROFILE' | 'CREW' | 'ADMIN';
-export type ModalType = 'NONE' | 'SPOT_DETAIL' | 'ADD_SPOT' | 'CREATE_SESSION' | 'SETTINGS' | 'VIDEO_UPLOAD';
+export type AppView = 'MAP' | 'LIST' | 'CHALLENGES' | 'MENTORSHIP' | 'JOURNEY' | 'PROFILE' | 'CREW' | 'ADMIN';
+export type ModalType = 'NONE' | 'SPOT_DETAIL' | 'ADD_SPOT' | 'CREATE_SESSION' | 'CREATE_CHALLENGE' | 'SETTINGS' | 'VIDEO_UPLOAD';
 
 export interface Badge {
   id: string;
@@ -167,6 +173,7 @@ export interface ChallengeSubmission {
 
 export interface User {
   id: string;
+  shareId?: string; // Unique short code for invites
   name: string;
   location: string;
   disciplines: Discipline[];
@@ -211,6 +218,7 @@ export interface User {
 
 export interface Spot {
   id: string;
+  ownerId?: string; // Creator ID for privacy management
   name: string;
   type: Discipline;
   category?: SpotCategory;
@@ -226,8 +234,10 @@ export interface Spot {
   isVerified: boolean;
   verificationStatus: VerificationStatus;
   status?: SpotStatus;
+  privacy: SpotPrivacy; // Visibility Protocol
   distance?: number;
   images?: string[];
+  videoUrl?: string; // Short clip
   sessions: any[];
   rating: number;
   reviews?: Review[];
@@ -285,6 +295,11 @@ export interface Mentor {
   earnings: number;
   studentsTrained: number;
   badges: MentorBadge[];
+  stats?: {
+      technical: number;
+      style: number;
+      teaching: number;
+  }
 }
 
 export interface Skill {
@@ -315,5 +330,7 @@ export interface DailyNote {
   userId: string;
   date: string;
   text: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
   timestamp: string;
 }
