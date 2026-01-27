@@ -25,7 +25,6 @@ const Navigation: React.FC<NavigationProps> = ({ mode = 'bottom' }) => {
     setView(id);
   };
 
-  // Map 'LIST' view to 'MAP' tab for UI highlighting
   const activeTabId = currentView === 'LIST' ? 'MAP' : currentView;
 
   if (mode === 'rail') {
@@ -55,7 +54,7 @@ const Navigation: React.FC<NavigationProps> = ({ mode = 'bottom' }) => {
                 <Icon 
                   size={24} 
                   strokeWidth={isActive ? 2.5 : 2}
-                  className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
+                  className={`transition-transform duration-300 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]' : 'group-hover:scale-105'}`}
                 />
                 <span className="text-[9px] font-bold tracking-widest uppercase opacity-80">
                   {tab.label}
@@ -69,10 +68,9 @@ const Navigation: React.FC<NavigationProps> = ({ mode = 'bottom' }) => {
   }
 
   // Default: Bottom Navigation
-  // Changed from absolute to fixed bottom-0 to prevent being hidden on mobile browsers with address bars
   return (
-    <nav className="w-full pb-[env(safe-area-inset-bottom)] pt-2 border-t border-white/5 bg-black/90 backdrop-blur-xl fixed bottom-0 left-0 z-[100]">
-      <div className="flex justify-around items-center h-14 w-full max-w-2xl mx-auto px-2">
+    <nav className="w-full pb-[env(safe-area-inset-bottom)] pt-3 border-t border-white/10 bg-black/90 backdrop-blur-xl fixed bottom-0 left-0 z-[100] shadow-[0_-5px_20px_rgba(0,0,0,0.5)]">
+      <div className="flex justify-around items-center h-16 w-full max-w-2xl mx-auto px-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTabId === tab.id;
@@ -80,18 +78,27 @@ const Navigation: React.FC<NavigationProps> = ({ mode = 'bottom' }) => {
             <button
               key={tab.id}
               onClick={() => handleTabClick(tab.id)}
-              className={`flex flex-col items-center justify-center gap-1 transition-all duration-300 w-14 ${
+              className={`flex flex-col items-center justify-center gap-1.5 transition-all duration-300 w-16 relative group ${
                 isActive ? 'text-white' : 'text-slate-500 hover:text-slate-300'
               }`}
             >
+              {/* Active Glow Backdrop */}
+              {isActive && (
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 bg-indigo-500/20 rounded-full blur-md animate-pulse" />
+              )}
+
               <Icon 
                 size={22} 
                 strokeWidth={isActive ? 2.5 : 2}
-                className={`transition-transform duration-300 ${isActive ? 'scale-110' : ''}`}
+                className={`transition-transform duration-300 relative z-10 ${isActive ? 'scale-110 drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]' : 'group-active:scale-95'}`}
               />
-              <span className="text-[10px] font-medium tracking-wide">
+              
+              <span className={`text-[9px] font-medium tracking-wide uppercase transition-all ${isActive ? 'text-indigo-200' : 'text-slate-600'}`}>
                 {tab.label}
               </span>
+
+              {/* Active Indicator Dot */}
+              <div className={`absolute -bottom-1 w-1 h-1 rounded-full bg-indigo-500 transition-all duration-300 ${isActive ? 'opacity-100 scale-100 shadow-[0_0_6px_#6366f1]' : 'opacity-0 scale-0'}`} />
             </button>
           );
         })}

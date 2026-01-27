@@ -240,6 +240,7 @@ const SpotsView: React.FC = () => {
 
         // Dynamic Discovery Logic
         const checkVisibility = () => {
+            if (!map) return;
             const currentZoom = map.getZoom();
             if (currentZoom < MIN_DISCOVERY_ZOOM) return;
 
@@ -276,7 +277,7 @@ const SpotsView: React.FC = () => {
     
     if (mapInstanceRef.current) {
         setTimeout(() => {
-            mapInstanceRef.current.invalidateSize();
+            mapInstanceRef.current?.invalidateSize();
         }, 200);
     }
 
@@ -515,7 +516,7 @@ const SpotsView: React.FC = () => {
       <div className="absolute inset-0 z-10 pointer-events-none flex flex-col h-full">
         
         {/* TOP HUD */}
-        <div className="pt-safe-top px-4 pb-2 bg-gradient-to-b from-black/90 via-black/40 to-transparent pointer-events-auto w-full max-w-lg relative">
+        <div className="pt-safe-top px-4 pb-2 bg-gradient-to-b from-black/90 via-black/40 to-transparent pointer-events-auto w-full max-w-lg relative mx-auto">
              <div className="flex items-center gap-3 mb-3 relative">
                 {/* Avatar (Colored) */}
                 <button onClick={() => setView('PROFILE')} className="w-10 h-10 rounded-xl border border-white/10 bg-slate-900 overflow-hidden shadow-lg shrink-0 active:scale-95 transition-transform z-30 relative group">
@@ -704,31 +705,8 @@ const SpotsView: React.FC = () => {
         </div>
 
         {/* MAP CONTROLS & COMPASS */}
-        <div className={`absolute right-4 top-1/2 -translate-y-1/2 pointer-events-auto flex flex-col items-end gap-6 ${layoutMode === 'compact' ? 'top-1/2' : 'top-32'}`}>
+        <div className={`absolute right-[calc(1rem+env(safe-area-inset-right))] top-1/2 -translate-y-1/2 pointer-events-auto flex flex-col items-center gap-4 ${layoutMode === 'compact' ? 'top-1/2' : 'top-32'}`}>
              
-             {/* TACTICAL HUD COMPASS WIDGET (SVG) */}
-             <div 
-                className="w-10 h-10 rounded-full bg-black/80 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl relative group cursor-pointer hover:border-white/40 transition-colors"
-                onClick={() => { triggerHaptic('light'); mapInstanceRef.current?.setBearing(0); }}
-             >
-                 <svg width="40" height="40" viewBox="0 0 40 40" className="absolute inset-0">
-                    {/* Ring */}
-                    <circle cx="20" cy="20" r="18" stroke="rgba(255,255,255,0.1)" strokeWidth="1" fill="none" />
-                    {/* North Needle (Red) */}
-                    <path d="M20 4 L23 18 L20 20 L17 18 Z" fill="#ef4444" />
-                    {/* South Needle (Ghost) */}
-                    <path d="M20 36 L17 22 L20 20 L23 22 Z" fill="rgba(255,255,255,0.2)" />
-                    {/* Center Point */}
-                    <circle cx="20" cy="20" r="2" fill="white" />
-                    {/* Ticks */}
-                    <line x1="20" y1="2" x2="20" y2="6" stroke="white" strokeWidth="2" />
-                    <line x1="38" y1="20" x2="34" y2="20" stroke="white" strokeWidth="1" opacity="0.5" />
-                    <line x1="20" y1="38" x2="20" y2="34" stroke="white" strokeWidth="1" opacity="0.5" />
-                    <line x1="2" y1="20" x2="6" y2="20" stroke="white" strokeWidth="1" opacity="0.5" />
-                 </svg>
-                 <div className="absolute top-1 text-[6px] font-black text-white">N</div>
-             </div>
-
              <div className="flex flex-col bg-black/80 backdrop-blur-xl border border-white/20 rounded-full p-1.5 shadow-2xl gap-2">
                   <button onClick={handleLocate} className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-white rounded-full hover:bg-white/10 transition-colors">
                       <LocateFixed size={18} />

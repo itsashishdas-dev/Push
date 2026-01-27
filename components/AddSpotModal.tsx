@@ -133,7 +133,7 @@ const AddSpotModal: React.FC = () => {
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto hide-scrollbar space-y-5 relative z-10 pb-2">
+            <div className="flex-1 overflow-y-auto hide-scrollbar space-y-5 relative z-10 pb-6">
                 
                 {/* GPS Acquisition Module */}
                 <div className="space-y-2">

@@ -7,14 +7,14 @@ import {
   FileText, MapPin, Calendar, Clock, Edit2, 
   Send, Terminal, Bookmark, Trophy, Zap, 
   Activity, ArrowRight, Video, Target, TrendingUp,
-  AlertTriangle, Camera, X
+  AlertTriangle, Camera, X, MessageSquare
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
 import SkillTree from '../components/SkillTree';
 
 const JourneyView: React.FC = () => {
-  const { user, sessions, challenges, skills, notes, initializeData } = useAppStore();
+  const { user, sessions, challenges, skills, notes, initializeData, openChat } = useAppStore();
   const [noteInput, setNoteInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState<'timeline' | 'upcoming' | 'tech_tree'>('timeline');
@@ -53,6 +53,12 @@ const JourneyView: React.FC = () => {
       setIsSubmitting(false);
       
       setTimeout(() => playSound('success'), 300);
+  };
+
+  const handleOpenChat = (sessionId: string, title: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      triggerHaptic('medium');
+      openChat(sessionId, title);
   };
 
   const skillStats = useMemo(() => {
@@ -303,7 +309,7 @@ const JourneyView: React.FC = () => {
                   </div>
               ) : (
                   upcomingSessions.map(session => (
-                      <div key={session.id} className="bg-[#0b0c10] border border-slate-800 p-5 rounded-[2rem] relative overflow-hidden group">
+                      <div key={session.id} className="bg-[#0b0c10] border border-slate-800 p-5 rounded-[2rem] relative overflow-hidden group hover:border-indigo-500/30 transition-all">
                           <div className="absolute top-0 left-0 w-1.5 h-full bg-indigo-500" />
                           
                           <div className="pl-3">
@@ -326,17 +332,26 @@ const JourneyView: React.FC = () => {
                                   <MapPin size={12} className="text-indigo-500" /> {session.spotName}
                               </p>
 
-                              <div className="flex items-center gap-3 border-t border-slate-800 pt-3">
-                                  <div className="flex -space-x-2">
-                                      {session.participants.slice(0,3).map(pid => (
-                                          <div key={pid} className="w-6 h-6 rounded-full bg-slate-700 border border-slate-900 overflow-hidden">
-                                              <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${pid}`} className="w-full h-full object-cover" />
-                                          </div>
-                                      ))}
+                              <div className="flex items-center justify-between border-t border-slate-800 pt-3">
+                                  <div className="flex items-center gap-3">
+                                      <div className="flex -space-x-2">
+                                          {session.participants.slice(0,3).map(pid => (
+                                              <div key={pid} className="w-6 h-6 rounded-full bg-slate-700 border border-slate-900 overflow-hidden">
+                                                  <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${pid}`} className="w-full h-full object-cover" />
+                                              </div>
+                                          ))}
+                                      </div>
+                                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                                          {session.participants.length} Operatives
+                                      </span>
                                   </div>
-                                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                      {session.participants.length} Operatives Ready
-                                  </span>
+
+                                  <button 
+                                    onClick={(e) => handleOpenChat(session.id, session.title, e)}
+                                    className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400 hover:bg-indigo-600 hover:text-white hover:border-indigo-500 transition-all active:scale-90"
+                                  >
+                                      <MessageSquare size={14} />
+                                  </button>
                               </div>
                           </div>
                       </div>

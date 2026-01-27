@@ -169,9 +169,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({ onLogout, setActiveTab }) => 
            <div className="flex justify-between items-start mb-6">
                <div className="flex items-center gap-4">
                    {/* Avatar */}
-                   <div className="relative w-20 h-20 shrink-0">
-                       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl rotate-3 blur-sm opacity-50"></div>
-                       <div className="relative w-full h-full bg-[#0b0c10] rounded-2xl overflow-hidden border-2 border-white/10 shadow-xl">
+                   <div onClick={() => setActiveTab('MAP')} className="relative w-20 h-20 shrink-0 cursor-pointer active:scale-95 transition-transform group">
+                       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl rotate-3 blur-sm opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                       <div className="relative w-full h-full bg-[#0b0c10] rounded-2xl overflow-hidden border-2 border-white/10 shadow-xl group-hover:border-indigo-500/50">
                            <img src={user.avatar} className="w-full h-full object-cover" />
                        </div>
                    </div>

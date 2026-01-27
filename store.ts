@@ -1,7 +1,7 @@
 
 import { create } from 'zustand';
 import { backend } from './services/mockBackend.ts';
-import { User, Spot, ExtendedSession, Challenge, Skill, Quest, Discipline, DailyNote, Mentor, AppView, ModalType } from './types.ts';
+import { User, Spot, ExtendedSession, Challenge, Skill, Quest, Discipline, DailyNote, Mentor, AppView, ModalType, ChatMessage } from './types.ts';
 import { SKILL_LIBRARY } from './constants.tsx';
 
 interface AppState {
@@ -18,9 +18,11 @@ interface AppState {
   
   // --- UI STATE (Single Source of Truth) ---
   currentView: AppView;
+  previousView: AppView | null;
   activeModal: ModalType;
   selectedSpot: Spot | null;
   selectedSkill: Skill | null;
+  chatChannel: { id: string; title: string } | null;
   
   // --- PERSISTENT VIEW STATE ---
   mapViewSettings: { center: { lat: number; lng: number }, zoom: number } | null;
@@ -41,6 +43,7 @@ interface AppState {
   selectSpot: (spot: Spot | null) => void;
   selectSkill: (skill: Skill | null) => void;
   setMapViewSettings: (settings: { center: { lat: number; lng: number }, zoom: number }) => void;
+  openChat: (channelId: string, title: string) => void;
   
   // Data Actions
   refreshSpots: () => Promise<void>;
@@ -64,9 +67,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   // UI Defaults
   currentView: 'MAP',
+  previousView: null,
   activeModal: 'NONE',
   selectedSpot: null,
   selectedSkill: null,
+  chatChannel: null,
   mapViewSettings: null,
   
   isLoading: true,
@@ -119,8 +124,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // --- UI ACTIONS ---
   setView: (view: AppView) => {
-    // When switching views, ensure we reset overlay states if needed
-    set({ currentView: view, activeModal: 'NONE' });
+    // When switching views, save current as previous (unless it's the same view)
+    set((state) => ({ 
+        previousView: state.currentView !== view ? state.currentView : state.previousView,
+        currentView: view, 
+        activeModal: 'NONE' 
+    }));
   },
 
   openModal: (type: ModalType, data?: any) => {
@@ -129,7 +138,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   closeModal: () => {
-    set({ activeModal: 'NONE' });
+    set({ activeModal: 'NONE', chatChannel: null });
   },
 
   selectSpot: (spot: Spot | null) => {
@@ -146,6 +155,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setMapViewSettings: (settings) => {
     set({ mapViewSettings: settings });
+  },
+
+  openChat: (channelId: string, title: string) => {
+      set({ activeModal: 'CHAT', chatChannel: { id: channelId, title } });
   },
 
   // --- DATA ACTIONS ---

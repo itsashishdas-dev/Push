@@ -433,6 +433,36 @@ class MockBackend {
           localStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(quests));
       }
   }
+
+  // --- CHAT SYSTEM ---
+  async getChatMessages(channelId: string): Promise<ChatMessage[]> {
+      this.initDB();
+      const allChats: Record<string, ChatMessage[]> = this.safeParse(STORAGE_KEYS.CHATS, {});
+      return allChats[channelId] || [];
+  }
+
+  async sendChatMessage(channelId: string, text: string): Promise<ChatMessage> {
+      const user = await this.getUser();
+      const allChats: Record<string, ChatMessage[]> = this.safeParse(STORAGE_KEYS.CHATS, {});
+      
+      if (!allChats[channelId]) {
+          allChats[channelId] = [];
+      }
+
+      const newMessage: ChatMessage = {
+          id: `msg-${Date.now()}`,
+          sessionId: channelId,
+          userId: user.id,
+          userName: user.name,
+          text: text,
+          timestamp: new Date().toISOString()
+      };
+
+      allChats[channelId].push(newMessage);
+      localStorage.setItem(STORAGE_KEYS.CHATS, JSON.stringify(allChats));
+      
+      return newMessage;
+  }
 }
 
 export const backend = new MockBackend();

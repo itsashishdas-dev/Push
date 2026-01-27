@@ -45,7 +45,7 @@ export type SoundType =
   'click' | 'success' | 'error' | 'unlock' | 
   'ollie' | 'grind' | 'land' | 'roll' | 
   'boot' | 'map_zoom' | 'log_click' |
-  'uplink_init' | 'skate_pop' | 'longboard_roll' | 'stance_select' | 'radar_scan' | 'radar_complete' | 'terminate' | 'data_stream' | 'tactile_select' | 'goodbye' | 'glitch';
+  'uplink_init' | 'skate_pop' | 'longboard_roll' | 'stance_select' | 'radar_scan' | 'radar_complete' | 'terminate' | 'data_stream' | 'tactile_select' | 'goodbye' | 'glitch' | 'skate_start';
 
 export const playSound = (type: SoundType) => {
   if (!soundEnabled) return;
@@ -174,7 +174,7 @@ export const playSound = (type: SoundType) => {
     // --- IMMERSIVE SOUNDS ---
 
     case 'boot':
-      // Slow capacitor charge - KEPT FOR REFERENCE BUT REMOVED FROM ONBOARDING
+      // Slow capacitor charge
       osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(50, t);
       osc.frequency.exponentialRampToValueAtTime(200, t + 1.5);
@@ -240,24 +240,35 @@ export const playSound = (type: SoundType) => {
 
     case 'glitch':
         // Tech Glitch: Static Burst + Digital Tear
-        // 1. Static Texture (High pass noise)
         playNoise(0.12, 0.12, 3000, 'highpass'); 
         
-        // 2. Digital Tearing (Square wave modulation)
         osc.type = 'square';
-        // Randomize base frequency for variety
         const glFreq = Math.random() > 0.5 ? 120 : 60; 
         osc.frequency.setValueAtTime(glFreq, t);
         osc.frequency.linearRampToValueAtTime(glFreq * 0.5, t + 0.1);
         
-        gain.gain.setValueAtTime(0.1, t); // Louder for visibility
+        gain.gain.setValueAtTime(0.1, t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
         
         osc.start(t);
         osc.stop(t + 0.12);
         break;
       
-    // Game Sounds (Keep slightly punchier but reasonable)
+    // Game Sounds
+    case 'skate_start':
+        // Board drop thud + wheels
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(120, t);
+        osc.frequency.exponentialRampToValueAtTime(40, t + 0.1);
+        gain.gain.setValueAtTime(0.4, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+        osc.start(t);
+        osc.stop(t + 0.2);
+        
+        // Wheels impact
+        playNoise(0.25, 0.3, 1000, 'lowpass', 0.02);
+        break;
+
     case 'ollie':
       playNoise(0.1, 0.2, 1000, 'lowpass');
       break;

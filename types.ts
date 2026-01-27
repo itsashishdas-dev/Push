@@ -75,7 +75,7 @@ export enum BadgeTier {
 
 // --- UI STATE TYPES ---
 export type AppView = 'MAP' | 'LIST' | 'CHALLENGES' | 'MENTORSHIP' | 'JOURNEY' | 'PROFILE' | 'CREW' | 'ADMIN';
-export type ModalType = 'NONE' | 'SPOT_DETAIL' | 'ADD_SPOT' | 'CREATE_SESSION' | 'CREATE_CHALLENGE' | 'SETTINGS' | 'VIDEO_UPLOAD';
+export type ModalType = 'NONE' | 'SPOT_DETAIL' | 'ADD_SPOT' | 'CREATE_SESSION' | 'CREATE_CHALLENGE' | 'SETTINGS' | 'VIDEO_UPLOAD' | 'CHAT';
 
 export interface Badge {
   id: string;
@@ -317,7 +317,7 @@ export interface Skill {
 
 export interface ChatMessage {
   id: string;
-  sessionId: string;
+  sessionId: string; // Used for both Crew ID and Session ID
   userId: string;
   userName: string;
   text: string;

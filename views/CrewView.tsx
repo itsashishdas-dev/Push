@@ -6,7 +6,7 @@ import { Crew } from '../types';
 import { 
   Users, Shield, Target, MapPin, ChevronLeft, 
   Crown, Plus, Settings, Search, Loader2, LogOut, CheckCircle2, User as UserIcon, X, Check,
-  Hexagon
+  Hexagon, MessageSquare
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
@@ -18,7 +18,7 @@ interface CrewViewProps {
 const CREW_AVATARS = ['🛹', '🔥', '⚡', '🌊', '💀', '👽', '🦖', '👹'];
 
 const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
-  const { user, spots, updateUser } = useAppStore();
+  const { user, spots, updateUser, openChat } = useAppStore();
   const [crew, setCrew] = useState<Crew | null>(null);
   const [availableCrews, setAvailableCrews] = useState<Crew[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +110,13 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
       playSound('error');
       const all = await backend.getAllCrews();
       setAvailableCrews(all);
+  };
+
+  const handleOpenChat = () => {
+      if (crew) {
+          triggerHaptic('medium');
+          openChat(crew.id, crew.name);
+      }
   };
 
   if (isLoading) return <div className="h-full bg-black flex items-center justify-center"><div className="text-slate-500 font-bold uppercase tracking-widest animate-pulse">Syncing Unit Data...</div></div>;
@@ -377,6 +384,25 @@ const CrewView: React.FC<CrewViewProps> = ({ onBack }) => {
            {/* CONTENT */}
            <div className="px-6 space-y-6">
                
+               {/* Quick Comms Button */}
+               <button 
+                   onClick={handleOpenChat}
+                   className="w-full bg-[#111] border border-white/10 p-4 rounded-2xl flex items-center justify-between group active:scale-[0.98] transition-all hover:bg-[#161616]"
+               >
+                   <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 rounded-xl bg-indigo-900/20 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                           <MessageSquare size={18} />
+                       </div>
+                       <div>
+                           <h3 className="text-sm font-black uppercase text-white tracking-wide">Comms Link</h3>
+                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Secure Unit Chat</p>
+                       </div>
+                   </div>
+                   <div className="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400 group-hover:text-white transition-colors">
+                       <ChevronLeft size={16} className="rotate-180" />
+                   </div>
+               </button>
+
                {/* Requests */}
                {isAdmin && pendingRequests.length > 0 && (
                    <section className="bg-[#0b0c10] border border-indigo-500/30 p-5 rounded-[2rem] shadow-[0_0_20px_rgba(99,102,241,0.1)] relative overflow-hidden">

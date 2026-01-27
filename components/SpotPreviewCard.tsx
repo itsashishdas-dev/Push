@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Spot, ExtendedSession, Challenge, Crew, SpotStatus, SpotPrivacy } from '../types';
-import { MapPin, Navigation, Clock, Zap, X, Users, Droplets, Wind, Activity, Crosshair, ChevronRight, AlertTriangle, Plus, Swords, Calendar, Share2, Lock, EyeOff, Play, Video, Image as ImageIcon } from 'lucide-react';
+import { MapPin, Navigation, Clock, Zap, X, Users, Droplets, Wind, Activity, Crosshair, ChevronRight, AlertTriangle, Plus, Swords, Calendar, Share2, Lock, EyeOff, Play, Video, Image as ImageIcon, MessageSquare } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { useAppStore } from '../store';
 import { useLayoutMode } from '../hooks/useLayoutMode';
@@ -25,7 +25,7 @@ interface MediaItem {
 }
 
 const SpotPreviewCard: React.FC<SpotPreviewCardProps> = ({ spot, sessions, challenges, crew, onClose, onCheckIn }) => {
-  const { location, openModal, user } = useAppStore();
+  const { location, openModal, user, openChat } = useAppStore();
   const layoutMode = useLayoutMode();
   const [distance, setDistance] = useState<string>('CALCULATING...');
   const [isLiveOpsExpanded, setIsLiveOpsExpanded] = useState(false);
@@ -105,6 +105,12 @@ const SpotPreviewCard: React.FC<SpotPreviewCardProps> = ({ spot, sessions, chall
       triggerHaptic('success');
       playSound('success');
       alert(`Secure Invite Copied: ${inviteCode}`);
+  };
+
+  const handleJoinChat = (sessionId: string, title: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      triggerHaptic('medium');
+      openChat(sessionId, title);
   };
 
   const statusConfig = {
@@ -337,23 +343,36 @@ const SpotPreviewCard: React.FC<SpotPreviewCardProps> = ({ spot, sessions, chall
                             {/* Expanded Active Sessions List */}
                             {isLiveOpsExpanded && sessions.length > 0 && (
                                 <div className="border-t border-white/5 p-2 space-y-2 bg-[#080808]">
-                                    {sessions.map(sess => (
-                                        <div key={sess.id} className="bg-[#111] rounded-lg p-3 flex justify-between items-center border border-white/5">
-                                            <div className="flex items-center gap-3">
-                                                <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${sess.userId}`} className="w-8 h-8 rounded-lg bg-slate-800" />
-                                                <div>
-                                                    <div className="text-[9px] font-black text-white uppercase">{sess.userName}</div>
-                                                    <div className="text-[8px] text-slate-500 uppercase tracking-wider">{sess.title}</div>
+                                    {sessions.map(sess => {
+                                        const isJoined = sess.participants.includes(user?.id || '');
+                                        return (
+                                            <div key={sess.id} className="bg-[#111] rounded-lg p-3 flex justify-between items-center border border-white/5">
+                                                <div className="flex items-center gap-3">
+                                                    <img src={`https://api.dicebear.com/7.x/pixel-art/svg?seed=${sess.userId}`} className="w-8 h-8 rounded-lg bg-slate-800" />
+                                                    <div>
+                                                        <div className="text-[9px] font-black text-white uppercase">{sess.userName}</div>
+                                                        <div className="text-[8px] text-slate-500 uppercase tracking-wider">{sess.title}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    {isJoined && (
+                                                        <button 
+                                                            onClick={(e) => handleJoinChat(sess.id, sess.title, e)}
+                                                            className="p-2 text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-xl transition-colors active:scale-95"
+                                                        >
+                                                            <MessageSquare size={14} />
+                                                        </button>
+                                                    )}
+                                                    <button 
+                                                        onClick={(e) => handleReportSession(sess.id, e)}
+                                                        className="p-2 text-slate-600 hover:text-red-500 transition-colors active:scale-90"
+                                                    >
+                                                        <AlertTriangle size={14} />
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <button 
-                                                onClick={(e) => handleReportSession(sess.id, e)}
-                                                className="p-2 text-slate-600 hover:text-red-500 transition-colors active:scale-90"
-                                            >
-                                                <AlertTriangle size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

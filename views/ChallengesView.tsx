@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Challenge, ChallengeSubmission, Difficulty, Collectible, Crew } from '../types';
 import { backend } from '../services/mockBackend';
-import { Swords, Check, Video, Play, X, Crosshair, Users, Shield, ShieldCheck, ChevronRight, Plus, Trophy } from 'lucide-react';
+import { Swords, Check, Video, Play, X, Crosshair, Users, Shield, ShieldCheck, ChevronRight, Plus, Trophy, MessageSquare, Clock, MapPin, Calendar, FileText, AlertTriangle } from 'lucide-react';
 import { playSound } from '../utils/audio';
 import { COLLECTIBLES_DATABASE } from '../constants';
 import { ChallengeCardSkeleton, EmptyState } from '../components/States';
@@ -15,7 +15,7 @@ interface ChallengesViewProps {
 }
 
 const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
-  const { challenges, user, isLoading, updateUser, spots } = useAppStore();
+  const { challenges, user, isLoading, updateUser, spots, sessions, openChat } = useAppStore();
   const [viewingSubmission, setViewingSubmission] = useState<ChallengeSubmission | null>(null);
   const [uploadingChallenge, setUploadingChallenge] = useState<(Challenge & { spotName: string }) | null>(null);
   const [unlockedItem, setUnlockedItem] = useState<Collectible | null>(null);
@@ -42,6 +42,18 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
      }
      return result;
   }, [challenges, user?.disciplines, spots]);
+
+  // Derived: My Active Sessions
+  const mySessions = React.useMemo(() => {
+      if (!user) return [];
+      const now = new Date();
+      now.setHours(0,0,0,0);
+      
+      // Show sessions user is participant of, sorted by date
+      return sessions
+        .filter(s => s.participants.includes(user.id) && new Date(s.date) >= now)
+        .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+  }, [sessions, user]);
 
   React.useEffect(() => {
     const fetchSubs = async () => {
@@ -80,13 +92,20 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
       if (onNavigate) onNavigate('CREW');
   };
 
+  const handleOpenChat = (sessionId: string, title: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      triggerHaptic('medium');
+      playSound('click');
+      openChat(sessionId, title);
+  };
+
   return (
     <div className="h-full overflow-y-auto hide-scrollbar pb-32 pt-8 px-6 animate-view relative min-h-full space-y-8 bg-[#020202]">
       {/* Background Layers */}
       <div className="absolute inset-0 z-0 opacity-[0.05] pointer-events-none mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
       <div className="absolute inset-0 z-0 pointer-events-none bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
 
-      <header className="relative z-10 flex flex-col gap-6">
+      <header className="relative z-10 flex flex-col gap-6 pt-safe-top">
           <div>
             <h1 className="text-4xl font-black italic uppercase text-white tracking-tighter leading-[0.85] mb-2 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]">Active<br/>Ops</h1>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Daily Objectives & Unit Status</p>
@@ -142,114 +161,141 @@ const ChallengesView: React.FC<ChallengesViewProps> = ({ onNavigate }) => {
           )}
       </header>
 
+      {/* ACTIVE MISSIONS (SESSIONS) */}
+      {mySessions.length > 0 && (
+          <section className="relative z-10 space-y-3">
+              <div className="flex items-center gap-2 px-1 text-emerald-400">
+                  <Clock size={14} className="animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Active Missions ({mySessions.length})</span>
+              </div>
+              
+              <div className="space-y-3">
+                  {mySessions.map(session => (
+                      <div key={session.id} className="bg-[#0b0c10] border border-emerald-500/20 rounded-[1.5rem] p-4 flex items-center justify-between group relative overflow-hidden shadow-lg hover:border-emerald-500/40 transition-colors">
+                          <div className="absolute inset-0 bg-gradient-to-r from-emerald-900/5 via-transparent to-transparent pointer-events-none" />
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                          
+                          <div className="flex items-center gap-4 pl-2">
+                              <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center border border-white/5 shrink-0">
+                                  <Calendar size={20} className="text-emerald-500" />
+                              </div>
+                              <div className="min-w-0">
+                                  <div className="flex items-center gap-2 mb-0.5">
+                                      <span className="text-[8px] font-black bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider">{session.time} Today</span>
+                                      <span className="text-[8px] font-mono text-slate-500">{session.participants.length} OPS</span>
+                                  </div>
+                                  <h4 className="text-sm font-black italic uppercase text-white truncate leading-none mb-1">{session.title}</h4>
+                                  <div className="flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase tracking-wide">
+                                      <MapPin size={10} /> {session.spotName}
+                                  </div>
+                              </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                              <button 
+                                onClick={(e) => handleOpenChat(session.id, session.title, e)}
+                                className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all active:scale-95"
+                              >
+                                  <MessageSquare size={16} />
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </section>
+      )}
+
       {isLoading ? (
         <div className="space-y-4 relative z-10">
            {[...Array(3)].map((_, i) => <ChallengeCardSkeleton key={i} />)}
         </div>
       ) : (
-        <div className="space-y-6 relative z-10">
-          <div className="flex items-center gap-2 px-1">
-              <Swords size={14} className="text-white" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white">Live Challenges</span>
+        <section className="space-y-4 relative z-10">
+          <div className="flex items-center gap-2 px-1 text-white">
+              <Swords size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Available Contracts</span>
           </div>
 
-          {filteredChallenges.length === 0 ? (
-            <EmptyState icon={Swords} title="No Challenges" description="Check back later for new ops matching your style." />
-          ) : (
-            filteredChallenges.map(challenge => {
-               const isCompleted = user?.completedChallengeIds.includes(challenge.id);
-               const submissions = submissionsMap[challenge.id] || [];
-               
-               return (
-                 <div key={challenge.id} className="bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 relative overflow-hidden shadow-2xl transition-all duration-300 hover:border-white/20">
-                    
-                    {/* Scanline Overlay */}
-                    <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[size:100%_2px,3px_100%] pointer-events-none opacity-20" />
+          <div className="grid grid-cols-1 gap-4">
+            {filteredChallenges.length === 0 ? (
+                <EmptyState icon={Swords} title="No Challenges" description="Check back later for new ops matching your style." />
+            ) : (
+                filteredChallenges.map(challenge => {
+                const isCompleted = user?.completedChallengeIds.includes(challenge.id);
+                const submissions = submissionsMap[challenge.id] || [];
+                
+                return (
+                    <div key={challenge.id} className="group bg-[#0b0c10] border border-white/10 rounded-[1.5rem] overflow-hidden hover:border-white/20 transition-all shadow-xl relative">
+                        {/* Status Bar Indicator */}
+                        <div className={`absolute top-0 left-0 bottom-0 w-1 ${isCompleted ? 'bg-green-500' : challenge.difficulty === Difficulty.PRO ? 'bg-red-500' : challenge.difficulty === Difficulty.ADVANCED ? 'bg-orange-500' : 'bg-indigo-500'}`} />
 
-                    {/* Card Content */}
-                    <div className="relative z-10">
-                        {/* Top Status Bar */}
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-2">
-                                <div className={`w-2 h-2 rounded-full ${isCompleted ? 'bg-green-500 shadow-[0_0_8px_#22c55e]' : 'bg-indigo-500 animate-pulse'}`} />
-                                <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                                    {isCompleted ? 'MISSION COMPLETE' : 'ACTIVE BOUNTY'}
-                                </span>
-                            </div>
-                            <div className={`px-2 py-1 rounded-lg border text-[8px] font-black uppercase tracking-widest ${
-                                challenge.difficulty === Difficulty.ADVANCED 
-                                ? 'bg-red-500/10 text-red-400 border-red-500/20' 
-                                : 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                            }`}>
-                                {challenge.difficulty}
-                            </div>
-                        </div>
-
-                        {/* Title & Spot */}
-                        <div className="mb-6">
-                            <h3 className="text-3xl font-black italic uppercase text-white tracking-tighter leading-[0.9] mb-2 drop-shadow-xl w-[95%]">
-                                {challenge.title}
-                            </h3>
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
-                                <Crosshair size={12} strokeWidth={2.5} /> 
-                                <span className="border-b border-dashed border-indigo-500/50 pb-0.5">{challenge.spotName}</span>
-                            </div>
-                        </div>
-
-                        {/* Instructions */}
-                        <div className="mb-6 pl-4 border-l-2 border-slate-800">
-                            <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                                {challenge.description}
-                            </p>
-                        </div>
-
-                        {/* Recent Activity (Feed) */}
-                        {submissions.length > 0 && (
-                            <div className="mb-6">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <Users size={10} className="text-slate-600" />
-                                    <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest">Live Feed</span>
+                        <div className="p-5 pl-6">
+                            {/* Header */}
+                            <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-mono text-[9px] text-slate-500 uppercase tracking-[0.2em]">{challenge.id.split('-')[1] || 'CNT'} // {challenge.difficulty}</span>
                                 </div>
-                                <div className="flex gap-3 overflow-x-auto hide-scrollbar">
-                                    {submissions.map(sub => (
-                                        <button key={sub.id} onClick={() => setViewingSubmission(sub)} className="w-14 h-14 rounded-xl bg-slate-900 border border-slate-800 overflow-hidden relative shrink-0 group/sub shadow-lg">
-                                            <img src={sub.thumbnailUrl} className="w-full h-full object-cover opacity-60 group-hover/sub:opacity-100 transition-opacity grayscale group-hover/sub:grayscale-0" />
-                                            <div className="absolute inset-0 flex items-center justify-center"><Play size={12} className="text-white fill-white" /></div>
-                                        </button>
+                                <div className="flex items-center gap-1.5 bg-[#151515] border border-white/5 px-2 py-1 rounded-md">
+                                    <Trophy size={10} className="text-yellow-500" />
+                                    <span className="font-mono text-[10px] font-bold text-white">{challenge.xpReward} XP</span>
+                                </div>
+                            </div>
+
+                            {/* Main Info */}
+                            <div className="mb-4">
+                                <h3 className={`text-xl font-black uppercase italic tracking-tighter leading-none mb-1 ${isCompleted ? 'text-green-400 line-through decoration-green-500/50' : 'text-white'}`}>
+                                    {challenge.title}
+                                </h3>
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 uppercase tracking-widest font-mono">
+                                    <Crosshair size={10} /> 
+                                    <span className="border-b border-dashed border-indigo-500/30">{challenge.spotName}</span>
+                                </div>
+                            </div>
+
+                            {/* Compact Brief */}
+                            <div className="bg-[#111] p-3 rounded-lg border border-white/5 mb-4 relative">
+                                <FileText size={40} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-800 opacity-20 pointer-events-none" />
+                                <p className="text-[10px] text-slate-400 font-medium leading-relaxed font-mono relative z-10">
+                                    "{challenge.description}"
+                                </p>
+                            </div>
+
+                            {/* Footer / Action */}
+                            <div className="flex items-center justify-between pt-2">
+                                <div className="flex -space-x-2">
+                                    {submissions.slice(0,3).map(sub => (
+                                        <div key={sub.id} className="w-6 h-6 rounded-full border border-black bg-slate-800 overflow-hidden">
+                                            <img src={sub.thumbnailUrl} className="w-full h-full object-cover" />
+                                        </div>
                                     ))}
+                                    {submissions.length > 0 && (
+                                        <div className="w-6 h-6 rounded-full border border-black bg-slate-800 flex items-center justify-center text-[7px] font-bold text-slate-400">
+                                            +{submissions.length > 3 ? submissions.length - 3 : ''}
+                                        </div>
+                                    )}
+                                    {submissions.length === 0 && <span className="text-[8px] text-slate-600 font-mono self-center ml-2">NO RECORDS</span>}
                                 </div>
-                            </div>
-                        )}
 
-                        {/* Footer Action Deck */}
-                        <div className="flex items-center justify-between gap-4 mt-auto border-t border-white/5 pt-5">
-                            <div className="flex flex-col">
-                                <span className="text-[8px] font-black uppercase text-slate-600 tracking-widest mb-0.5">Reward</span>
-                                <span className="text-lg font-black text-white font-mono leading-none">+{challenge.xpReward} XP</span>
-                            </div>
-
-                            <div className="flex-1">
                                 {isCompleted ? (
-                                     <button disabled className="w-full h-12 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed">
-                                        <Check size={14} strokeWidth={3} /> Verified
-                                     </button>
+                                    <button disabled className="px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 cursor-default">
+                                        <Check size={12} strokeWidth={3} /> Cleared
+                                    </button>
                                 ) : (
-                                     <button 
+                                    <button 
                                         onClick={() => setUploadingChallenge(challenge)} 
-                                        className="w-full h-12 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-200 transition-all shadow-lg active:scale-95 relative overflow-hidden group/btn"
-                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-black/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                                        <Video size={14} strokeWidth={2.5} /> Upload Proof
-                                     </button>
+                                        className="px-4 py-2 bg-white text-black hover:bg-slate-200 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all active:scale-95 shadow-lg group/btn"
+                                    >
+                                        <Video size={12} strokeWidth={2.5} className="group-hover/btn:scale-110 transition-transform" /> Upload
+                                    </button>
                                 )}
                             </div>
                         </div>
                     </div>
-                 </div>
-               );
-            })
-          )}
-        </div>
+                );
+                })
+            )}
+          </div>
+        </section>
       )}
 
       {viewingSubmission && (

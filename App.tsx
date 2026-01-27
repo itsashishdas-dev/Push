@@ -10,6 +10,7 @@ import AddSpotModal from './components/AddSpotModal.tsx';
 import SpotPreviewCard from './components/SpotPreviewCard.tsx'; 
 import CreateSessionModal from './components/CreateSessionModal.tsx';
 import CreateChallengeModal from './components/CreateChallengeModal.tsx';
+import ChatModal from './components/ChatModal.tsx';
 
 // Views
 import SpotsView from './views/SpotsView.tsx';
@@ -37,6 +38,7 @@ const App: React.FC = () => {
   const { 
     user, 
     currentView, 
+    previousView,
     activeModal, 
     selectedSpot,
     sessions,
@@ -119,7 +121,7 @@ const App: React.FC = () => {
       {currentView === 'MENTORSHIP' && <MentorshipView />}
       {currentView === 'JOURNEY' && <JourneyView />}
       {currentView === 'PROFILE' && <ProfileView setActiveTab={(t) => setView(t as any)} onLogout={handleLogout} />}
-      {currentView === 'CREW' && <CrewView onBack={() => setView('CHALLENGES')} />}
+      {currentView === 'CREW' && <CrewView onBack={() => setView(previousView || 'CHALLENGES')} />}
       {currentView === 'ADMIN' && <AdminDashboardView onBack={() => setView('PROFILE')} />}
 
       {/* GLOBAL OVERLAYS */}
@@ -149,6 +151,7 @@ const App: React.FC = () => {
       {activeModal === 'ADD_SPOT' && <AddSpotModal />}
       {activeModal === 'CREATE_SESSION' && <CreateSessionModal />}
       {activeModal === 'CREATE_CHALLENGE' && <CreateChallengeModal />}
+      {activeModal === 'CHAT' && <ChatModal onClose={closeModal} />}
     </AppLayout>
   );
 };
