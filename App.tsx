@@ -11,6 +11,7 @@ import SpotPreviewCard from './components/SpotPreviewCard.tsx';
 import CreateSessionModal from './components/CreateSessionModal.tsx';
 import CreateChallengeModal from './components/CreateChallengeModal.tsx';
 import ChatModal from './components/ChatModal.tsx';
+import LocationPermissionModal from './components/LocationPermissionModal.tsx';
 
 // Views
 import SpotsView from './views/SpotsView.tsx';
@@ -34,9 +35,11 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [crews, setCrews] = useState<any[]>([]);
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false);
   
   const { 
     user, 
+    location,
     currentView, 
     previousView,
     activeModal, 
@@ -59,19 +62,12 @@ const App: React.FC = () => {
         initializeData();
         const allCrews = await backend.getAllCrews();
         setCrews(allCrews);
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => setUserLocation(pos.coords.latitude, pos.coords.longitude),
-                (err) => console.warn("Location access denied or failed", err),
-                { enableHighAccuracy: true }
-            );
-        }
       } else {
         setIsLoggedIn(false);
       }
     };
     checkAuth();
-  }, []);
+  }, []); // Only runs once on mount
 
   // Sync sound settings when user loads
   useEffect(() => {
@@ -91,6 +87,28 @@ const App: React.FC = () => {
     await backend.logout();
     setIsLoggedIn(false);
     updateUser(null as any);
+  };
+
+  const handleLocationAllow = () => {
+      if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                  setUserLocation(pos.coords.latitude, pos.coords.longitude);
+                  setShowLocationPrompt(false);
+                  playSound('radar_complete');
+                  triggerHaptic('success');
+              },
+              (err) => {
+                  console.warn("Location access denied or failed", err);
+                  setShowLocationPrompt(false);
+                  triggerHaptic('error');
+                  // Optionally show a "Manual Entry" modal here
+              },
+              { enableHighAccuracy: true }
+          );
+      } else {
+          setShowLocationPrompt(false);
+      }
   };
 
   // --- RENDERING GUARDS ---
@@ -125,6 +143,14 @@ const App: React.FC = () => {
       {currentView === 'ADMIN' && <AdminDashboardView onBack={() => setView('PROFILE')} />}
 
       {/* GLOBAL OVERLAYS */}
+      
+      {/* Location Permission Modal */}
+      {showLocationPrompt && (
+          <LocationPermissionModal 
+              onAllow={handleLocationAllow}
+              onDeny={() => setShowLocationPrompt(false)}
+          />
+      )}
       
       {/* Spot Preview Card Overlay */}
       {activeModal === 'SPOT_DETAIL' && selectedSpot && (

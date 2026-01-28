@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Send, Hash, Users, MessageSquare } from 'lucide-react';
 import { backend } from '../services/mockBackend';
 import { useAppStore } from '../store';
@@ -58,8 +59,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ onClose }) => {
 
   if (!chatChannel) return null;
 
-  return (
-    <div className="fixed inset-0 z-[9000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view">
+  return createPortal(
+    <div className="fixed inset-0 z-[9000] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view" onClick={(e) => e.stopPropagation()}>
       
       {/* Container */}
       <div className="w-full max-w-lg h-[80vh] bg-[#050505] border border-white/10 rounded-[2rem] shadow-2xl relative flex flex-col overflow-hidden">
@@ -136,7 +137,8 @@ const ChatModal: React.FC<ChatModalProps> = ({ onClose }) => {
             </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

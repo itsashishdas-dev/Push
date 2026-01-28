@@ -1,6 +1,7 @@
 
 import * as React from 'react';
 import { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Discipline, Skill, Difficulty } from '../types.ts';
 import { SKILL_LIBRARY } from '../constants.tsx';
 import { backend } from '../services/mockBackend.ts';
@@ -178,8 +179,8 @@ const SkillsView: React.FC = () => {
       </div>
 
       {/* --- SKILL DETAIL MODAL --- */}
-      {selectedSkill && (
-          <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-end md:items-center justify-center animate-view">
+      {selectedSkill && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-end md:items-center justify-center animate-view">
               <div className="w-full max-w-md bg-[#0b0c10] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-0 shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden">
                   
                   {/* CRT Overlay on Modal */}
@@ -212,13 +213,24 @@ const SkillsView: React.FC = () => {
                               <Play size={12} /> Data Tape
                           </h3>
                           <div className="aspect-video w-full bg-black rounded-2xl overflow-hidden border border-slate-800 relative group cursor-pointer">
-                              <img src={`https://img.youtube.com/vi/${selectedSkill.tutorialUrl}/hqdefault.jpg`} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-12 h-12 bg-white/10 backdrop-blur rounded-full flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform">
-                                      <Play size={20} className="text-white fill-white ml-1" />
+                              {selectedSkill.tutorialUrl ? (
+                                  <>
+                                    <img src={`https://img.youtube.com/vi/${selectedSkill.tutorialUrl}/hqdefault.jpg`} className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-12 h-12 bg-white/10 backdrop-blur rounded-full flex items-center justify-center border border-white/20 group-hover:scale-110 transition-transform">
+                                            <Play size={20} className="text-white fill-white ml-1" />
+                                        </div>
+                                    </div>
+                                    <a href={`https://www.youtube.com/watch?v=${selectedSkill.tutorialUrl}`} target="_blank" rel="noreferrer" className="absolute inset-0 z-20" />
+                                  </>
+                              ) : (
+                                  <div className="flex flex-col items-center justify-center h-full text-slate-500">
+                                      <div className="w-10 h-10 border border-slate-700 rounded-full flex items-center justify-center mb-2">
+                                          <X size={16} />
+                                      </div>
+                                      <span className="text-[9px] font-mono">NO DATA TAPE FOUND</span>
                                   </div>
-                              </div>
-                              <a href={`https://www.youtube.com/watch?v=${selectedSkill.tutorialUrl}`} target="_blank" rel="noreferrer" className="absolute inset-0 z-20" />
+                              )}
                           </div>
                       </div>
 
@@ -291,7 +303,8 @@ const SkillsView: React.FC = () => {
                       </div>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       {selectedSkill && isUploadOpen && (

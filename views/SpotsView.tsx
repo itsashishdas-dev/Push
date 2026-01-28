@@ -14,7 +14,7 @@ const MIN_DISCOVERY_ZOOM = 4;
 const MARKER_SHAPES = {
     street: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full filter drop-shadow-md"><path d="M12 0L24 12L12 24L0 12L12 0Z"/></svg>`, // Diamond
     park: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full filter drop-shadow-md"><path d="M12 2l8.66 5v10L12 22l-8.66-5V7L12 2z"/></svg>`, // Hexagon
-    downhill: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full filter drop-shadow-md"><path d="M2 2h20L12 22 2 2z"/></svg>`, // Inverted Triangle
+    downhill: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full filter drop-shadow-md"><path d="M12 2 L22 22 H2 Z"/></svg>`, // Upward Triangle (Mountain Shape)
     diy: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full filter drop-shadow-md"><rect x="3" y="3" width="18" height="18" rx="3" /></svg>`, // Square
     flat: `<svg viewBox="0 0 24 24" fill="currentColor" class="w-full h-full filter drop-shadow-md"><circle cx="12" cy="12" r="11"/></svg>` // Circle
 };
@@ -23,7 +23,8 @@ const MARKER_SHAPES = {
 const INNER_ICONS = {
     street: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-[60%] h-[60%]"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`, // Zig-Zag (Dash/Flash)
     park: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-[60%] h-[60%]"><path d="M2 16c0-6 4-10 10-10s10 4 10 10" /></svg>`, // Half Circle (Bowl)
-    downhill: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="w-[60%] h-[60%]"><path d="M12 3v14M19 12l-7 7-7-7"/></svg>`, // Down Arrow
+    // Updated Downhill to use Mountain Icon from Onboarding (Longboard) - Centered visually
+    downhill: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-[50%] h-[50%] translate-y-[20%]"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg>`, 
     diy: `<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-[60%] h-[60%]"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`, // Tool
     flat: `<svg viewBox="0 0 24 24" fill="white" stroke="none" class="w-[40%] h-[40%]"><circle cx="12" cy="12" r="12"/></svg>` // Dot
 };

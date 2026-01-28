@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Mentor, Booking, Discipline, BadgeTier, MentorBadge } from '../types';
 import { backend } from '../services/mockBackend';
 import { askAICoach } from '../services/geminiService';
-import { Star, Send, Loader2, Sparkles, Play, X, Calendar, Clock, CheckCircle2, Quote, User as UserIcon, BadgeCheck, Zap, Filter, Bot, MessageSquare, ChevronRight, Terminal, BrainCircuit, Activity, Settings, Lock, Users, MapPin, IndianRupee, Cpu } from 'lucide-react';
+import { Star, Send, Loader2, Sparkles, Play, X, Calendar, Clock, CheckCircle2, Quote, User as UserIcon, BadgeCheck, Zap, Filter, Bot, MessageSquare, ChevronRight, Terminal, BrainCircuit, Activity, Settings, Lock, Users, MapPin, IndianRupee, Cpu, ChevronDown } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 import { playSound } from '../utils/audio';
 import { useAppStore } from '../store';
@@ -17,6 +17,89 @@ const SUGGESTED_AI_PROMPTS = [
     { id: 3, text: "Best wheels for rough roads?", icon: Settings, color: "text-slate-300", border: "border-slate-500/50" },
     { id: 4, text: "Mental tips for dropping in", icon: BrainCircuit, color: "text-indigo-400", border: "border-indigo-500/50" }
 ];
+
+// --- FORMATTER COMPONENTS ---
+
+const FormattedInline = ({ text }: { text: string }) => {
+    // Regex to capture **bold** text for highlighting
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return (
+        <>
+            {parts.map((part, idx) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    const content = part.slice(2, -2);
+                    return (
+                        <span key={idx} className="relative inline-block mx-0.5 px-1.5 py-0.5 rounded-[3px] bg-amber-500/10 border-b-2 border-amber-500/60 text-amber-200 font-bold shadow-[0_0_12px_rgba(245,158,11,0.15)] tracking-wide">
+                            {content}
+                        </span>
+                    );
+                }
+                return part;
+            })}
+        </>
+    );
+};
+
+const MessageContent = ({ text, isUser }: { text: string, isUser: boolean }) => {
+    if (isUser) return <p className="font-medium tracking-wide">{text}</p>;
+
+    const lines = text.split('\n');
+    return (
+        <div className="space-y-1">
+            {lines.map((line, i) => {
+                const trimmed = line.trim();
+                if (!trimmed) return <div key={i} className="h-3" />; // Breathing space
+
+                // Header Detection (###)
+                if (trimmed.startsWith('###') || trimmed.startsWith('##')) {
+                    const content = trimmed.replace(/^#+\s*/, '');
+                    return (
+                        <h3 key={i} className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 border-b border-emerald-500/20 pb-2 mb-3 mt-5 flex items-center gap-2">
+                            <div className="w-1 h-3 bg-emerald-500 shadow-[0_0_8px_#10b981]" />
+                            {content}
+                        </h3>
+                    );
+                }
+
+                // List Detection (- or *)
+                if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+                    const content = trimmed.replace(/^[-*]\s*/, '');
+                    return (
+                        <div key={i} className="flex items-start gap-3 mb-2 pl-2 group/list">
+                            <span className="text-emerald-500/70 mt-[6px] text-[8px] font-mono group-hover/list:text-emerald-400 transition-colors">▶</span>
+                            <p className="text-sm leading-7 text-emerald-100/90 font-medium">
+                                <FormattedInline text={content} />
+                            </p>
+                        </div>
+                    );
+                }
+                
+                // Numbered List (1.)
+                if (/^\d+\.\s/.test(trimmed)) {
+                     const content = trimmed.replace(/^\d+\.\s*/, '');
+                     const num = trimmed.match(/^\d+/)?.[0];
+                     return (
+                        <div key={i} className="flex items-start gap-3 mb-2 pl-1">
+                            <span className="text-emerald-500 font-mono font-bold text-[10px] mt-1 bg-emerald-500/10 px-1.5 rounded border border-emerald-500/20 h-fit min-w-[20px] text-center">{num}</span>
+                            <p className="text-sm leading-7 text-emerald-100/90 font-medium">
+                                <FormattedInline text={content} />
+                            </p>
+                        </div>
+                     );
+                }
+
+                // Standard Paragraph
+                return (
+                    <p key={i} className="text-sm leading-7 mb-2 text-emerald-100/80 font-medium">
+                        <FormattedInline text={line} />
+                    </p>
+                );
+            })}
+        </div>
+    );
+};
+
+// --- MAIN VIEW ---
 
 const MentorshipView: React.FC = () => {
   const { user, bookMentorSession } = useAppStore();
@@ -103,18 +186,6 @@ const MentorshipView: React.FC = () => {
     return result;
   }, [mentors, searchQuery, disciplineFilter]);
 
-  const StatBar = ({ label, value, color }: { label: string, value: number, color: string }) => (
-      <div className="flex flex-col gap-1">
-          <div className="flex justify-between items-end">
-              <span className="text-[8px] font-black uppercase text-slate-500 tracking-widest">{label}</span>
-              <span className="text-[9px] font-mono font-bold text-white">{value}%</span>
-          </div>
-          <div className="h-1 w-full bg-slate-900 rounded-full overflow-hidden">
-              <div className={`h-full ${color}`} style={{ width: `${value}%` }}></div>
-          </div>
-      </div>
-  );
-
   return (
     <div className="pb-32 pt-8 px-4 md:px-6 animate-view h-full flex flex-col relative overflow-y-auto hide-scrollbar bg-[#020202]">
        {/* Background Layers */}
@@ -164,16 +235,27 @@ const MentorshipView: React.FC = () => {
            </button>
       </div>
 
-      {/* --- AI COACH INTERFACE --- */}
-      {activeTab === 'ai-coach' && (
-          <div className="flex-1 flex flex-col bg-[#0b0c10] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl relative min-h-0 animate-view">
+      {/* --- AI COACH INTERFACE (Overlay Drawer) --- */}
+      {/* 
+          This is now an overlay that slides up, positioned absolutely at bottom.
+          It covers the list but leaves the nav bar accessible underneath if needed, 
+          though design-wise it sits 'above' the nav bar visually.
+      */}
+      <div 
+        className={`
+            fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+4rem)] top-20 z-40 
+            transition-transform duration-500 cubic-bezier(0.32, 0.72, 0, 1) flex flex-col px-4
+            ${activeTab === 'ai-coach' ? 'translate-y-0' : 'translate-y-[120%] pointer-events-none'}
+        `}
+      >
+          <div className="flex-1 flex flex-col bg-[#0b0c10] rounded-[2rem] overflow-hidden border border-emerald-500/30 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] relative w-full max-w-2xl mx-auto">
               {/* Header */}
-              <div className="bg-[#080808] p-4 border-b border-white/10 flex items-center justify-between shrink-0">
+              <div className="bg-[#080808] p-4 border-b border-white/10 flex items-center justify-between shrink-0 cursor-pointer" onClick={() => setActiveTab('find')}>
                   <div className="flex items-center gap-2">
                       <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_#10b981]" />
                       <span className="text-[10px] font-mono font-bold text-emerald-500 uppercase tracking-widest">SPOT_NET // v2.5 ONLINE</span>
                   </div>
-                  <Cpu size={14} className="text-slate-700" />
+                  <ChevronDown size={16} className="text-slate-500" />
               </div>
 
               {/* Chat Area */}
@@ -211,7 +293,7 @@ const MentorshipView: React.FC = () => {
                   {chat.map((msg, idx) => (
                       <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-pop relative z-10`}>
                           <div 
-                            className={`max-w-[85%] p-4 text-sm font-medium leading-relaxed shadow-lg border relative group
+                            className={`max-w-[85%] p-5 shadow-lg border relative group
                             ${msg.role === 'user' 
                                 ? 'bg-indigo-600 border-indigo-500 text-white rounded-2xl rounded-br-sm' 
                                 : 'bg-[#080808] border-emerald-500/20 text-emerald-100 rounded-2xl rounded-bl-sm font-mono'}`}
@@ -221,7 +303,8 @@ const MentorshipView: React.FC = () => {
                                       <Bot size={10} /> AI_CORE
                                   </div>
                               )}
-                              {msg.text}
+                              
+                              <MessageContent text={msg.text} isUser={msg.role === 'user'} />
                           </div>
                       </div>
                   ))}
@@ -258,11 +341,12 @@ const MentorshipView: React.FC = () => {
                   </div>
               </div>
           </div>
-      )}
+      </div>
 
-      {/* --- MENTOR LIST --- */}
-      {activeTab === 'find' && (
-          <div className="space-y-6 relative z-10">
+      {/* --- MENTOR LIST (Always Visible Background) --- */}
+      {/* Only hide if 'apply' mode is active, otherwise show find list so overlay sits on top */}
+      {activeTab !== 'apply' && (
+          <div className={`space-y-6 relative z-10 transition-opacity duration-300 ${activeTab === 'ai-coach' ? 'opacity-30 pointer-events-none blur-sm' : 'opacity-100'}`}>
               <div className="flex flex-col gap-3">
                   <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"><Filter size={14} className="text-slate-500 group-focus-within:text-indigo-400 transition-colors" /></div>

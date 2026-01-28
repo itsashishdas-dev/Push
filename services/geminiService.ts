@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 
 const FALLBACK_QUOTES = [
@@ -157,29 +158,35 @@ export const generateStateCover = async (stateName: string, landmark: string): P
 };
 
 /**
- * Handles complex coaching queries using Thinking Mode with Gemini 3 Pro.
- * Optimized for complex technique analysis and strategic spot navigation.
+ * Handles complex coaching queries.
+ * Switched to Gemini 3 Flash for speed and reliability to avoid timeouts.
  */
 export const askAICoach = async (query: string) => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `You are 'Coach SPOTS', an expert AI skate coach in India. 
-      You have deep knowledge of skate physics, Indian spot architecture, and the mental game of extreme sports.
-      Provide detailed, reasoned, and encouraging feedback.
-      
-      User Query: ${query}`,
-      config: {
-        thinkingConfig: {
-          thinkingBudget: 32768
-        }
-      }
-    });
+    // Adding a timeout race to prevent indefinite loading
+    const response = await Promise.race([
+        ai.models.generateContent({
+          model: "gemini-3-flash-preview",
+          contents: `You are 'Coach SPOTS', an expert AI skate coach in India. 
+          You have deep knowledge of skate physics, Indian spot architecture, and the mental game of extreme sports.
+          
+          Instructions:
+          1. Provide detailed, reasoned, and encouraging feedback.
+          2. Use Markdown formatting:
+             - Use '### Headers' for main sections.
+             - Use bullet points for steps or tips.
+             - **CRITICAL**: Use bold text (e.g., **Balance**) to highlight key terms, physics concepts, and safety warnings. This is used for the UI highlighter system.
+          3. Keep paragraphs short and readable.
+          
+          User Query: ${query}`,
+        }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Request Timeout")), 15000))
+    ]) as GenerateContentResponse;
     
     return response.text || "I'm buffering on that trick. Try again!";
   } catch (error) {
-    console.error("AI Coach thinking failed:", error);
-    return "The skate network is busy processing a heavy line. Keep pushing and try later!";
+    console.error("AI Coach failed:", error);
+    return "The skate network is busy. Check your connection or try again later.";
   }
 };

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Swords, CheckCircle2, Loader2, AlignLeft, BarChart3 } from 'lucide-react';
 import { useAppStore } from '../store';
 import { triggerHaptic } from '../utils/haptics';
@@ -39,8 +40,8 @@ const CreateChallengeModal: React.FC = () => {
 
   if (!selectedSpot) return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view" onClick={(e) => e.stopPropagation()}>
         <div className="w-full max-w-sm bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 shadow-2xl relative flex flex-col overflow-hidden">
             
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
@@ -121,7 +122,8 @@ const CreateChallengeModal: React.FC = () => {
                 </button>
             </div>
         </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

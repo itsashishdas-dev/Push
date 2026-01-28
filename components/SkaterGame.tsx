@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, RotateCcw, ArrowUp, ArrowDown } from 'lucide-react';
 import { playSound } from '../utils/audio';
 import { triggerHaptic } from '../utils/haptics';
@@ -192,11 +193,20 @@ const SPRITE_STAIRS = [
 const SkaterGame: React.FC<SkaterGameProps> = ({ onClose, isOverlay = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const reqRef = useRef<number>();
+  const reqRef = useRef<number | undefined>(undefined);
   
   const [gameState, setGameState] = useState<'IDLE' | 'PLAYING' | 'GAME_OVER'>('IDLE');
   const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(parseInt(localStorage.getItem('skater_highscore_pixel') || '0'));
+  
+  // Safe Storage Access
+  const [highScore, setHighScore] = useState(() => {
+      try {
+          return parseInt(localStorage.getItem('skater_highscore_pixel') || '0');
+      } catch {
+          return 0;
+      }
+  });
+  
   const [trickFeedback, setTrickFeedback] = useState<{name: string, id: number} | null>(null);
   
   const touchStartRef = useRef<{x: number, y: number, time: number} | null>(null);
@@ -325,7 +335,9 @@ const SkaterGame: React.FC<SkaterGameProps> = ({ onClose, isOverlay = false }) =
     const finalScore = Math.floor(state.current.distance / 10);
     if (finalScore > highScore) {
       setHighScore(finalScore);
-      localStorage.setItem('skater_highscore_pixel', finalScore.toString());
+      try {
+          localStorage.setItem('skater_highscore_pixel', finalScore.toString());
+      } catch {}
     }
   };
 
@@ -820,7 +832,7 @@ const SkaterGame: React.FC<SkaterGameProps> = ({ onClose, isOverlay = false }) =
   );
 
   if (isOverlay) {
-      return (
+      return createPortal(
           <div 
             className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 md:p-6 animate-view"
             onClick={onClose}
@@ -839,7 +851,8 @@ const SkaterGame: React.FC<SkaterGameProps> = ({ onClose, isOverlay = false }) =
                       </p>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       );
   }
 

@@ -25,6 +25,22 @@ const STORAGE_KEYS = {
   QUESTS: 'spots_db_quests'
 };
 
+// Safe Storage Wrapper
+const safeStorage = {
+  getItem: (key: string) => {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  },
+  setItem: (key: string, value: string) => {
+    try { localStorage.setItem(key, value); } catch (e) {}
+  },
+  removeItem: (key: string) => {
+    try { localStorage.removeItem(key); } catch (e) {}
+  },
+  clear: () => {
+    try { localStorage.clear(); } catch (e) {}
+  }
+};
+
 const MOCK_CREWS_LIST: Crew[] = [
   { id: 'c1', name: 'Night Riders', city: 'Mumbai', level: 5, members: ['u-2', 'u-3'], adminIds: ['u-2'], requests: [], maxMembers: 10, avatar: '🌑', moto: 'Own the night.', totalXp: 12500, weeklyGoal: { description: 'Night sesh streak', current: 2, target: 5 } },
   { id: 'c2', name: 'Hill Bombers', city: 'Pune', level: 8, members: ['u-4'], adminIds: ['u-4'], requests: [], maxMembers: 5, avatar: '💣', moto: 'Speed is key.', totalXp: 45000, weeklyGoal: { description: 'Clock 80kmph', current: 65, target: 80 } },
@@ -115,31 +131,31 @@ class MockBackend {
   // --- INIT ---
 
   private initDB() {
-    const currentVersion = localStorage.getItem(STORAGE_KEYS.VERSION);
+    const currentVersion = safeStorage.getItem(STORAGE_KEYS.VERSION);
     
     if (currentVersion !== DATA_VERSION) {
       // Preserve User if migrating from minor version, but for this demo, we can just clear
-      localStorage.clear(); 
-      localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
+      safeStorage.clear(); 
+      safeStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
       
       const enrichedSpots = MOCK_SPOTS.map(s => ({
         ...s,
         status: Math.random() > 0.8 ? SpotStatus.WET : Math.random() > 0.8 ? SpotStatus.CROWDED : SpotStatus.DRY,
         privacy: SpotPrivacy.PUBLIC // Default for legacy spots
       }));
-      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(enrichedSpots));
+      safeStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(enrichedSpots));
       
-      localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
-      localStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(MOCK_MENTORS));
-      localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(MOCK_NOTES));
-      localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(MOCK_CREWS_LIST));
+      safeStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(MOCK_CHALLENGES));
+      safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
+      safeStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(MOCK_MENTORS));
+      safeStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(MOCK_NOTES));
+      safeStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(MOCK_CREWS_LIST));
       this.resetUser();
     }
 
     // Fallbacks if data missing
-    if (!localStorage.getItem(STORAGE_KEYS.SPOTS)) localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(MOCK_SPOTS));
-    if (!localStorage.getItem(STORAGE_KEYS.SESSIONS)) localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
+    if (!safeStorage.getItem(STORAGE_KEYS.SPOTS)) safeStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(MOCK_SPOTS));
+    if (!safeStorage.getItem(STORAGE_KEYS.SESSIONS)) safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(MOCK_SESSIONS));
   }
 
   private resetUser() {
@@ -174,13 +190,13 @@ class MockBackend {
           distanceTraveled: 0
       }
     };
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(defaultUser));
+    safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(defaultUser));
     return defaultUser;
   }
 
   private safeParse(key: string, defaultValue: any) {
     try {
-      const item = localStorage.getItem(key);
+      const item = safeStorage.getItem(key);
       return item ? JSON.parse(item) : defaultValue;
     } catch (e) {
       return defaultValue;
@@ -189,16 +205,16 @@ class MockBackend {
 
   async isLoggedIn(): Promise<boolean> {
     this.initDB();
-    return localStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
+    return safeStorage.getItem(STORAGE_KEYS.AUTH) === 'true';
   }
 
   async login(): Promise<User> {
-    localStorage.setItem(STORAGE_KEYS.AUTH, 'true');
+    safeStorage.setItem(STORAGE_KEYS.AUTH, 'true');
     return this.getUser();
   }
 
   async logout(): Promise<void> {
-    localStorage.removeItem(STORAGE_KEYS.AUTH);
+    safeStorage.removeItem(STORAGE_KEYS.AUTH);
   }
 
   async getUser(): Promise<User> {
@@ -210,7 +226,7 @@ class MockBackend {
   }
 
   async updateUser(user: User): Promise<User> {
-    localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+    safeStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
     return user;
   }
 
@@ -250,7 +266,7 @@ class MockBackend {
       
       const rawSpots = spots.map(({sessions, ...s}) => s);
       rawSpots.push(newSpot);
-      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(rawSpots));
+      safeStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(rawSpots));
 
       // XP Reward
       await this.grantXp(XP_SOURCES.SPOT_CONTRIBUTION, 'Spot Discovery');
@@ -279,7 +295,7 @@ class MockBackend {
         ...data
     };
     challenges.push(newChallenge);
-    localStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
+    safeStorage.setItem(STORAGE_KEYS.CHALLENGES, JSON.stringify(challenges));
     return newChallenge;
   }
 
@@ -307,7 +323,7 @@ class MockBackend {
       intent: data.intent || 'Chill'
     };
     sessions.push(newSession);
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+    safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
     
     // XP Reward & Stats
     if (user.stats) user.stats.totalSessions += 1;
@@ -326,7 +342,7 @@ class MockBackend {
       const sessions = await this.getAllSessions();
       const newSession: ExtendedSession = { id: `sess-mentor-${Date.now()}`, userId: mentor.userId, userName: mentor.name, title: `Training with ${mentor.name}`, date: date === 'Today' ? new Date().toISOString().split('T')[0] : date, time: time, spotId: 'spot-virtual', spotName: 'Mentorship Uplink', spotType: mentor.disciplines[0], participants: [user.id, mentor.userId], reminderSet: true, intent: 'Training' };
       sessions.push(newSession);
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
+      safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
       await this.saveDailyNote(`Confirmed Mentorship: ${mentor.name} @ ${time}. Get ready.`);
       await this.grantXp(50, 'Mentorship Booked');
   }
@@ -345,7 +361,7 @@ class MockBackend {
         mediaType
     };
     notes.unshift(newNote);
-    localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
+    safeStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
     return newNote;
   }
 
@@ -356,24 +372,24 @@ class MockBackend {
       spots[index].verificationStatus = status;
       spots[index].isVerified = status === VerificationStatus.VERIFIED;
       const rawSpots = spots.map(({sessions, ...s}) => s);
-      localStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(rawSpots));
+      safeStorage.setItem(STORAGE_KEYS.SPOTS, JSON.stringify(rawSpots));
     }
   }
   async markSkillLanded(skillId: string): Promise<User> { const user = await this.getUser(); if (!user.landedSkills) user.landedSkills = []; if (!user.landedSkills.includes(skillId)) { user.landedSkills.push(skillId); return this.grantXp(XP_SOURCES.SKILL_LANDED, 'Skill Landed'); } return user; }
   async masterSkill(skillId: string): Promise<User> { const user = await this.getUser(); if (!user.masteredSkills) user.masteredSkills = []; if (!user.masteredSkills.includes(skillId)) { user.masteredSkills.push(skillId); if (!user.landedSkills.includes(skillId)) user.landedSkills.push(skillId); user.masteredCount += 1; await this.updateUser(user); return this.grantXp(XP_SOURCES.SKILL_MASTERED, 'Skill Mastered'); } return user; }
-  async joinSession(sessionId: string): Promise<ExtendedSession> { const sessions = await this.getAllSessions(); const user = await this.getUser(); const index = sessions.findIndex((s: ExtendedSession) => s.id === sessionId); if (index !== -1) { if (!sessions[index].participants) sessions[index].participants = []; if (!sessions[index].participants.includes(user.id)) { sessions[index].participants.push(user.id); localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions)); await this.grantXp(XP_SOURCES.SESSION_COMPLETE, 'Joined Session'); await this.saveDailyNote(`Joined Ops: ${sessions[index].title} at ${sessions[index].spotName}.`); } return sessions[index]; } throw new Error("Session not found"); }
+  async joinSession(sessionId: string): Promise<ExtendedSession> { const sessions = await this.getAllSessions(); const user = await this.getUser(); const index = sessions.findIndex((s: ExtendedSession) => s.id === sessionId); if (index !== -1) { if (!sessions[index].participants) sessions[index].participants = []; if (!sessions[index].participants.includes(user.id)) { sessions[index].participants.push(user.id); safeStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions)); await this.grantXp(XP_SOURCES.SESSION_COMPLETE, 'Joined Session'); await this.saveDailyNote(`Joined Ops: ${sessions[index].title} at ${sessions[index].spotName}.`); } return sessions[index]; } throw new Error("Session not found"); }
   async completeOnboarding(data: any): Promise<User> { const user = await this.getUser(); const updatedUser = { ...user, ...data, onboardingComplete: true }; await this.updateUser(updatedUser); return this.grantXp(50, 'Identity Established'); }
   async completeChallenge(challengeId: string): Promise<{ newUnlocks: string[], user: User }> { const user = await this.getUser(); const challenges = await this.getAllChallenges(); const challenge = challenges.find(c => c.id === challengeId); if (!user.completedChallengeIds.includes(challengeId) && challenge) { user.completedChallengeIds.push(challengeId); await this.updateUser(user); const xp = challenge.xpReward || XP_SOURCES.CHALLENGE_COMPLETE; const updatedUser = await this.grantXp(xp, 'Challenge Victory'); await this.updateQuestProgress('UPLOAD', 1); return { newUnlocks: [`sticker_${challengeId}`], user: updatedUser }; } return { newUnlocks: [], user }; }
   async getPendingMentorApplications(): Promise<any[]> { return this.safeParse('spots_db_mentor_apps', []); }
-  async applyToBecomeMentor(data: any): Promise<void> { const user = await this.getUser(); const apps = this.safeParse('spots_db_mentor_apps', []); apps.push({ user, application: data }); localStorage.setItem('spots_db_mentor_apps', JSON.stringify(apps)); }
-  async reviewMentorApplication(userId: string, approved: boolean): Promise<void> { const apps: { user: User, application: any }[] = this.safeParse('spots_db_mentor_apps', []); const index = apps.findIndex((a: any) => a.user.id === userId); if (index !== -1) { if (approved) { const app = apps[index]; const mentors = await this.getMentors(); if (!mentors.some(m => m.userId === userId)) { const newMentor: Mentor = { id: `m-${Date.now()}`, userId: userId, name: app.user.name, avatar: app.user.avatar || '', disciplines: app.user.disciplines || [Discipline.SKATE], rate: app.application.rate || 0, bio: app.application.style || '', rating: 5.0, reviewCount: 0, earnings: 0, studentsTrained: 0, badges: [] }; mentors.push(newMentor); localStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(mentors)); } } apps.splice(index, 1); localStorage.setItem('spots_db_mentor_apps', JSON.stringify(apps)); } }
+  async applyToBecomeMentor(data: any): Promise<void> { const user = await this.getUser(); const apps = this.safeParse('spots_db_mentor_apps', []); apps.push({ user, application: data }); safeStorage.setItem('spots_db_mentor_apps', JSON.stringify(apps)); }
+  async reviewMentorApplication(userId: string, approved: boolean): Promise<void> { const apps: { user: User, application: any }[] = this.safeParse('spots_db_mentor_apps', []); const index = apps.findIndex((a: any) => a.user.id === userId); if (index !== -1) { if (approved) { const app = apps[index]; const mentors = await this.getMentors(); if (!mentors.some(m => m.userId === userId)) { const newMentor: Mentor = { id: `m-${Date.now()}`, userId: userId, name: app.user.name, avatar: app.user.avatar || '', disciplines: app.user.disciplines || [Discipline.SKATE], rate: app.application.rate || 0, bio: app.application.style || '', rating: 5.0, reviewCount: 0, earnings: 0, studentsTrained: 0, badges: [] }; mentors.push(newMentor); safeStorage.setItem(STORAGE_KEYS.MENTORS, JSON.stringify(mentors)); } } apps.splice(index, 1); safeStorage.setItem('spots_db_mentor_apps', JSON.stringify(apps)); } }
   async getChallengeSubmissions(id: string): Promise<ChallengeSubmission[]> { return [ { id: 'sub-1', challengeId: id, userId: 'u-1', userName: 'Rahul', userAvatar: 'https://api.dicebear.com/7.x/pixel-art/svg?seed=Rahul', videoUrl: 'https://shiksha.skate.io/vid1.mp4', thumbnailUrl: 'https://picsum.photos/seed/skate/200/300', date: '2 days ago' } ]; }
   async getCustomSkills(): Promise<Skill[]> { this.initDB(); return this.safeParse(STORAGE_KEYS.CUSTOM_SKILLS, []); }
   async getAllCrews(): Promise<Crew[]> { this.initDB(); return this.safeParse(STORAGE_KEYS.CREWS, MOCK_CREWS_LIST); }
   async getUserCrew(crewId: string): Promise<Crew | null> { const crews = await this.getAllCrews(); return crews.find((c: Crew) => c.id === crewId) || null; }
-  async requestJoinCrew(crewId: string): Promise<void> { const user = await this.getUser(); const crews = await this.getAllCrews(); const index = crews.findIndex(c => c.id === crewId); if (index !== -1) { const crew = crews[index]; if (!crew.requests) crew.requests = []; if (!crew.members.includes(user.id) && !crew.requests.includes(user.id)) { crew.requests.push(user.id); localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews)); } } }
-  async respondToJoinRequest(crewId: string, userId: string, approved: boolean): Promise<Crew> { const crews = await this.getAllCrews(); const index = crews.findIndex(c => c.id === crewId); if (index !== -1) { const crew = crews[index]; crew.requests = (crew.requests || []).filter(id => id !== userId); if (approved) { if (!crew.members.includes(userId)) { crew.members.push(userId); const currentUser = await this.getUser(); if (currentUser.id === userId) { currentUser.crewId = crewId; await this.updateUser(currentUser); } } } localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews)); return crew; } throw new Error("Crew not found"); }
-  async leaveCrew(): Promise<User> { const user = await this.getUser(); if (!user.crewId) return user; const crews = await this.getAllCrews(); const crewIndex = crews.findIndex(c => c.id === user.crewId); if (crewIndex !== -1) { crews[crewIndex].members = crews[crewIndex].members.filter(id => id !== user.id); if (crews[crewIndex].adminIds) { crews[crewIndex].adminIds = crews[crewIndex].adminIds.filter(id => id !== user.id); } localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews)); } delete user.crewId; await this.updateUser(user); return user; }
+  async requestJoinCrew(crewId: string): Promise<void> { const user = await this.getUser(); const crews = await this.getAllCrews(); const index = crews.findIndex(c => c.id === crewId); if (index !== -1) { const crew = crews[index]; if (!crew.requests) crew.requests = []; if (!crew.members.includes(user.id) && !crew.requests.includes(user.id)) { crew.requests.push(user.id); safeStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews)); } } }
+  async respondToJoinRequest(crewId: string, userId: string, approved: boolean): Promise<Crew> { const crews = await this.getAllCrews(); const index = crews.findIndex(c => c.id === crewId); if (index !== -1) { const crew = crews[index]; crew.requests = (crew.requests || []).filter(id => id !== userId); if (approved) { if (!crew.members.includes(userId)) { crew.members.push(userId); const currentUser = await this.getUser(); if (currentUser.id === userId) { currentUser.crewId = crewId; await this.updateUser(currentUser); } } } safeStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews)); return crew; } throw new Error("Crew not found"); }
+  async leaveCrew(): Promise<User> { const user = await this.getUser(); if (!user.crewId) return user; const crews = await this.getAllCrews(); const crewIndex = crews.findIndex(c => c.id === user.crewId); if (crewIndex !== -1) { crews[crewIndex].members = crews[crewIndex].members.filter(id => id !== user.id); if (crews[crewIndex].adminIds) { crews[crewIndex].adminIds = crews[crewIndex].adminIds.filter(id => id !== user.id); } safeStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews)); } delete user.crewId; await this.updateUser(user); return user; }
   
   async createCrew(data: { name: string, city: string, moto: string, homeSpotId: string, homeSpotName: string, avatar: string, maxMembers?: number }): Promise<Crew> {
     const user = await this.getUser();
@@ -397,7 +413,7 @@ class MockBackend {
     };
     
     crews.push(newCrew);
-    localStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
+    safeStorage.setItem(STORAGE_KEYS.CREWS, JSON.stringify(crews));
     
     user.crewId = newCrew.id;
     await this.updateUser(user);
@@ -430,7 +446,7 @@ class MockBackend {
       }
       
       if (updated) {
-          localStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(quests));
+          safeStorage.setItem(STORAGE_KEYS.QUESTS, JSON.stringify(quests));
       }
   }
 
@@ -459,7 +475,7 @@ class MockBackend {
       };
 
       allChats[channelId].push(newMessage);
-      localStorage.setItem(STORAGE_KEYS.CHATS, JSON.stringify(allChats));
+      safeStorage.setItem(STORAGE_KEYS.CHATS, JSON.stringify(allChats));
       
       return newMessage;
   }

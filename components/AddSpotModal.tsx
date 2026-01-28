@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, MapPin, CheckCircle2, Loader2, Camera, AlignLeft, LocateFixed, Signal, Eye, EyeOff, Users, Video, ChevronDown } from 'lucide-react';
 import { Discipline, SpotCategory, Difficulty, SpotPrivacy } from '../types';
 import { useAppStore } from '../store';
@@ -110,8 +111,8 @@ const AddSpotModal: React.FC = () => {
 
   const isFormValid = form.name && coords && images.length > 0 && video && !isLoading;
 
-  return (
-    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-view" onClick={(e) => e.stopPropagation()}>
         <div className="w-full max-w-sm bg-[#0b0c10] border border-white/10 rounded-[2rem] p-6 shadow-2xl relative flex flex-col overflow-hidden max-h-[90vh]">
             
             {/* Background Texture */}
@@ -299,7 +300,8 @@ const AddSpotModal: React.FC = () => {
                 </button>
             </div>
         </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

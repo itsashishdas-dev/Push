@@ -1,6 +1,7 @@
 
 import * as React from 'react';
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Discipline, Skill } from '../types.ts';
 import { backend } from '../services/mockBackend.ts';
 import { triggerHaptic } from '../utils/haptics.ts';
@@ -266,15 +267,18 @@ const SkillTree: React.FC = () => {
       </div>
 
       {/* --- SKILL DETAIL MODAL --- */}
-      {selectedSkill && (
-          <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-end md:items-center justify-center animate-view">
-              <div className="w-full max-w-md bg-[#0b0c10] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-0 shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden">
+      {selectedSkill && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-end md:items-center justify-center animate-view">
+              <div 
+                className="w-full max-w-md bg-[#0b0c10] border-t md:border border-white/10 rounded-t-[2.5rem] md:rounded-[2.5rem] p-0 shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
                   
                   {/* CRT Overlay on Modal */}
                   <div className="absolute inset-0 pointer-events-none z-50 opacity-10 bg-[url('https://upload.wikimedia.org/wikipedia/commons/3/3a/Gray_scale_scan_line_pattern.png')] bg-repeat" />
 
                   {/* Header */}
-                  <div className="p-6 pb-0 relative z-10">
+                  <div className="p-6 pb-0 relative z-10 shrink-0">
                       <div className="flex justify-between items-start mb-4">
                           <div>
                               <span className="text-[9px] font-black uppercase tracking-[0.2em] text-indigo-500 bg-indigo-500/10 px-2 py-1 rounded mb-2 inline-block">
@@ -390,7 +394,8 @@ const SkillTree: React.FC = () => {
                       </div>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
 
       {selectedSkill && isUploadOpen && (

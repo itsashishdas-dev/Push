@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Upload, X, Film, CheckCircle2, Loader2, Video, AlertTriangle } from 'lucide-react';
 import { triggerHaptic } from '../utils/haptics';
 
@@ -41,8 +42,8 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ title, description,
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[9000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-view">
+  return createPortal(
+    <div className="fixed inset-0 z-[9000] bg-black/95 backdrop-blur-md flex items-center justify-center p-4 animate-view" onClick={(e) => e.stopPropagation()}>
       
       {/* Card Container */}
       <div className="w-full max-w-sm bg-[#0b0c10] border border-white/10 rounded-[2.5rem] p-6 shadow-2xl relative flex flex-col max-h-[90vh] overflow-hidden">
@@ -155,7 +156,8 @@ const VideoUploadModal: React.FC<VideoUploadModalProps> = ({ title, description,
             </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
